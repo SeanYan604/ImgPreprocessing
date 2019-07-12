@@ -3,7 +3,7 @@ clear;
 close all;
 
 for k = 1:9
-    img = imread('./pic/1.png');
+    img = imread(strcat('./pic/',num2str(k),'.png'));
     [m,n] = size(img);
     sobel_mag = zeros(m,n);
     sobel_angle = zeros(m,n);
@@ -36,13 +36,14 @@ for k = 1:9
     % sobel_mask = medfilt2(sobel_mask);
     figure;
     imshow(255*uint8(sobel_mask));
-    % imwrite(255*uint8(sobel_mask), 'sobel_mask_5.png');
+    
 
     sobel_mask = medfilt2(sobel_mask);      % 中值滤波
     [filter_output,strong_angle]=angle_filter(sobel_mask, quantized_angle);
     figure;
     imshow(uint8(255*filter_output));
-
+    
+    imwrite(255*uint8(filter_output), strcat('./sobel_mask/sobel_mask_',num2str(k),'.png'));
     % kernal_size = 3;
     % mask_pooling_1 = imgDownSample(filter_output, kernal_size, m, n, 'average');
     % angle_pooling_1 = imgDownSample(sobel_angle, kernal_size, m, n, 'average');
