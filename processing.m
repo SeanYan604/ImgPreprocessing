@@ -2,7 +2,7 @@ clc;
 clear;
 close all;
 
-for k = 1:9
+for k = 1:2
     img = imread(strcat('./pic/',num2str(k),'.png'));
     [m,n] = size(img);
     sobel_mag = zeros(m,n);
@@ -16,6 +16,8 @@ for k = 1:9
     %replicate:图像大小通过赋值外边界的值来扩展
     %symmetric 图像大小通过沿自身的边界进行镜像映射扩展
     img = imfilter(img,w,'replicate');
+    BW = edge(img,'canny',0.9);
+    
     for i = 2:m - 1   %sobel边缘检测
         for j = 2:n - 1
             Gx = - (D(i+1,j-1) + D(i+1,j) + D(i+1,j+1)) + (D(i-1,j-1) + D(i-1,j) + D(i-1,j+1));
@@ -37,13 +39,15 @@ for k = 1:9
     figure;
     imshow(255*uint8(sobel_mask));
     
+    figure;
+    imshow(BW);
 
     sobel_mask = medfilt2(sobel_mask);      % 中值滤波
     [filter_output,strong_angle]=angle_filter(sobel_mask, quantized_angle);
     figure;
     imshow(uint8(255*filter_output));
     
-    imwrite(255*uint8(filter_output), strcat('./sobel_mask/sobel_mask_',num2str(k),'.png'));
+%     imwrite(255*uint8(filter_output), strcat('./sobel_mask/sobel_mask_',num2str(k),'.png'));
     % kernal_size = 3;
     % mask_pooling_1 = imgDownSample(filter_output, kernal_size, m, n, 'average');
     % angle_pooling_1 = imgDownSample(sobel_angle, kernal_size, m, n, 'average');
