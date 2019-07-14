@@ -2,7 +2,7 @@ clc;
 clear;
 close all;
 
-for k = 1:2
+for k = 10:18
     img = imread(strcat('./pic/',num2str(k),'.png'));
     [m,n] = size(img);
     sobel_mag = zeros(m,n);
@@ -10,7 +10,7 @@ for k = 1:2
     quantized_angle = zeros(m,n);
     sobel_mask = zeros(m,n);
     D = double(img);
-    thresh = 200;
+    thresh = 150;
 
     w = fspecial('gaussian',[5,5],1);
     %replicate:图像大小通过赋值外边界的值来扩展
@@ -44,8 +44,8 @@ for k = 1:2
 
     sobel_mask = medfilt2(sobel_mask);      % 中值滤波
     [filter_output,strong_angle]=angle_filter(sobel_mask, quantized_angle);
-    figure;
-    imshow(uint8(255*filter_output));
+%     figure;
+%     imshow(uint8(255*filter_output));
     
 %     imwrite(255*uint8(filter_output), strcat('./sobel_mask/sobel_mask_',num2str(k),'.png'));
     % kernal_size = 3;
