@@ -11,7 +11,7 @@ imshow(test_img_sort);
 
 % initial_template = imread('initial_template.png');
 [m,n] = size(initial_template);
-gap_pix = 7;
+gap_pix = 2;
 Vl = initial_template(gap_pix,1);
 Vh = initial_template(m-gap_pix,1);
 
@@ -28,7 +28,8 @@ for j = 1:n
             Qj(j)= Qj(j) + 1;
         end
     end
-    Xjv(1:Qj(j),j) = calculateXi_(distribution,Qj(j));
+%     Xjv(1:Qj(j),j) = calculateXi_(distribution,Qj(j));
+    Xjv(1:Qj(j),j) = calculateXi(mu,sigma,Qj(j));
 end
 subplot(2,3,3);
 imshow(uint8(255*mask));
@@ -58,13 +59,13 @@ for i = 1:m
     end
 end
 %-----------------------Defect Location byAdaptive Threshold
-% L = (min(min(abs(D))));
-% W = 30; H = 10;
-% THl = W*log(sigma)/log(mu);
-% % THl = max(THl, L);
-% THh = THl + H;
-THl = 20;
-THh = 200;
+L = (min(min(abs(D))));
+W = 50; H = 200;
+THl = W*log(sigma)/log(mu);
+THl = max(THl, L);
+THh = THl + H;
+% THl = 20;
+% THh = 200;
 
 defect_rgb = zeros(m,n,3);
 defect_rgb(:,:,1) = img_compressed;

@@ -5,9 +5,9 @@ if __name__ == "__main__":
 
     total_num = 28
     for pic_num in range(1, total_num):
-        mask_file = './bin_contour/sobel_mask_' + str(pic_num) + '.png'
-        src_file = './pic/' + str(pic_num) + '.png'
-        region_file = './roi/region_' + str(pic_num) + '.png'
+        mask_file = '../bin_contour/sobel_mask_' + str(pic_num) + '.png'
+        src_file = '../pic/' + str(pic_num) + '.png'
+        region_file = '../roi/region_' + str(pic_num) + '.png'
 
         img = cv2.imread(mask_file)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

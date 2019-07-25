@@ -5,29 +5,43 @@ close all;
 temp_num = 5;
 background_sum = [];
 
-for i=1:temp_num
-    background = imread(strcat('../roi/region_',num2str(i),'.png'));
+% for i=3:temp_num
+%     background = imread(strcat('../roi/region_',num2str(i),'.png'));
+%     pix_vect = pixExtraction(background);
+%     background_sum = [ background_sum; pix_vect];
+% end
+
+coArray=['y','m','c','r','g','b','w','k'];%初始颜色数组
+for i = 0:temp_num
+    background = imread(strcat('../roi/region_',sprintf('%02d',i),'.png'));
     pix_vect = pixExtraction(background);
     background_sum = [ background_sum; pix_vect];
+    figure(1);
+    h = histogram(pix_vect,'EdgeColor','none','BinWidth',0.5,'FaceColor',coArray(i+1));
+    axis([180,250,0,1000]);
+    hold on;
+    values = h.Values;
+    edges = h.BinEdges;
+    binwidth = h.BinWidth;
+    centerpoints = [];
+    centerpoints(1,:) = edges(1:end-1)+0.5*binwidth;
+    centerpoints(2,:) = values;
+    centerpoints(:,values(:)==0) = [];
+    val = spcrv(centerpoints,4);
+    plot(val(1,:),val(2,:),coArray(i+1),'LineWidth',2);
+    hold on;
 end
-    
-% background_1 = imread('../roi/region_1.png');
-% background_2 = imread('../roi/region_2.png');
-% background_3 = imread('../roi/region_3.png');
-% background_4 = imread('../roi/region_4.png');
-% background_5 = imread('../roi/region_5.png');
-% 
-% 
-% % imhist(background);
+
+% imhist(background);
 % pix_vect_1 = pixExtraction(background_1);
 % pix_vect_2 = pixExtraction(background_2);
 % pix_vect_3 = pixExtraction(background_3);
 % pix_vect_4 = pixExtraction(background_4);
 % pix_vect_5 = pixExtraction(background_5);
-
+% 
 % figure;
 % h = histogram(pix_vect_1,'EdgeColor','none','BinWidth',0.5,'FaceColor','m');
-% axis([210,255,0,5000]);
+% axis([100,240,0,500]);
 % hold on;
 % values = h.Values;
 % edges = h.BinEdges;
@@ -41,7 +55,7 @@ end
 % 
 % 
 % h = histogram(pix_vect_2,'EdgeColor','none','BinWidth',0.5,'FaceColor','#77AC30');
-% axis([210,255,0,5000]);
+% axis([100,240,0,500]);
 % hold on;
 % values = h.Values;
 % edges = h.BinEdges;
@@ -54,7 +68,7 @@ end
 % hold on;
 % 
 % h = histogram(pix_vect_3,'EdgeColor','none','BinWidth',0.5,'FaceColor','#D95319');
-% axis([210,255,0,5000]);
+% axis([100,240,0,500]);
 % hold on;
 % values = h.Values;
 % edges = h.BinEdges;
@@ -67,7 +81,7 @@ end
 % hold on;
 % 
 % h = histogram(pix_vect_4,'EdgeColor','none','BinWidth',0.5,'FaceColor','b');
-% axis([210,255,0,5000]);
+% axis([100,240,0,500]);
 % hold on;
 % values = h.Values;
 % edges = h.BinEdges;
@@ -79,7 +93,7 @@ end
 % plot(val(1,:),val(2,:),'-b','LineWidth',2);
 
 
-figure(1);
+figure(2);
 % background_sum = [pix_vect_1;pix_vect_2;pix_vect_3;pix_vect_4;pix_vect_5];
 %------------------------------------------------------------------
 % avg = 250;
@@ -91,7 +105,7 @@ figure(1);
 % end
 %------------------------------------------------------------------
 h = histogram(background_sum,'EdgeColor','none','BinWidth',0.5,'FaceColor','#0072BD');
-axis([150,255,0,10000]);
+axis([180,250,0,3000]);
 hold on;
 values = h.Values;
 edges = h.BinEdges;
@@ -111,14 +125,14 @@ x = edges(1:end-1)+0.5*binwidth;
 % y = fitresult.a1 * normpdf(x, fitresult.b1, fitresult.c1);
 y = fitresult.a1 * gaussmf(x, [fitresult.c1 / 1.414, fitresult.b1]);  %  得到fH
 
-figure(1);
+figure(2);
 plot(x,y,'-','Color','#0072BD','LineWidth',2);
 
 y2 = normpdf(x, fitresult.b1, fitresult.c1 / 1.414); % 得到f(t) = 1/c*fH
 
-test_num = 27;
-for o=1:test_num
-    target_img = imread(strcat('../roi/region_',num2str(o),'.png'));
+test_num = 11 ;
+for o=8:test_num
+    target_img = imread(strcat('../roi/region_',sprintf('%02d',o),'.png'));
     img_compressed = CompressImg(target_img);
     [m,n] = size(img_compressed);
 
@@ -130,7 +144,8 @@ for o=1:test_num
     save('para.mat','mu','sigma'); %保存func的参数mu和sigma
     %-------------------------------
     initial_template = zeros(m,n);
-    Xi = calculateXi_(centerpoints_(2,:),m);
+%     Xi = calculateXi_(centerpoints_(2,:),m);
+    Xi = calculateXi(mu, sigma, m);
 
 
     for i = 1:m
@@ -157,4 +172,6 @@ for o=1:test_num
 
 % imwrite(initial_template, 'initial_template.png');
 end
+
+
 
