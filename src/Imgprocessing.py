@@ -4,6 +4,7 @@ import numpy as np
 import math
 import time
 import testAAE
+import region
 
 def quantizeAngle(angle):
     if angle >= 0:
@@ -194,52 +195,27 @@ if __name__ == "__main__":
         # cv2.imshow('src',src)
         # cv2.waitKey(0)
         region_file = '../roi/region_{:02d}'.format(i) + '.png'
-        # # cv2.imwrite("../Test_Image/output/{}_denoise.png".format(i),singleimg)
-        # cv2.imshow('img',singleimg)
-        # cv2.waitKey(0)
-        # ret, binary = cv2.threshold(singleimg,127,255,cv2.THRESH_BINARY)
-        contours,hierarchy= cv2.findContours(singleimg,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        imgcontour = singleimg.copy()
-        imgcontour[:] = 0
-        # 需要搞一个list给cv2.drawContours()才行！！！！！
-
-        temp = np.zeros((256,256),np.uint8)
-        #画出轮廓：temp是黑色幕布，contours是轮廓，-1表示全画，然后是颜色，厚度 cv2.FILLED 表示对轮廓内部区域进行填充
-
-        c_max = []
-        c_min = []
-        lenContours = len(contours)
-        if lenContours == 2:
-            fill_flage = False
-        else:
-            fill_flage = True
-
-        hierarchy0 = hierarchy[0]
-        for i in range(lenContours):
-            hierarchyI = hierarchy0[i]
-            if  hierarchyI[3] == -1:    #hierarchyI[0] == -1 and hierarchyI[1] == -1 and
-                cnt = contours[i]
-                c_max.append(cnt)
-            if  hierarchyI[2] == -1:    #hierarchyI[0] == -1 and hierarchyI[1] == -1 and
-                cnt = contours[i]
-                c_min.append(cnt)
-
-
-        cv2.drawContours(temp, c_max, -1,  (255), cv2.FILLED)
-        if fill_flage:
-            cv2.drawContours(temp, c_min, -1,  (0), cv2.FILLED)
+        mask = region.regionGenerate(singleimg)
         
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3))
-        eroded = cv2.erode(temp,kernel)
-        # cv2.imshow('region',eroded)
+        eroded = cv2.erode(mask,kernel)
+        eroded_2 = cv2.erode(eroded,kernel)
+        eroded_3 = cv2.erode(eroded_2,kernel)
+        roi = cv2.bitwise_and(src, src, mask=eroded)
+        sub = eroded - eroded_3
+        m,n = sub.shape
+        for row in range(m):
+            for col in range(n):
+                if sub[row, col] and roi[row, col] < 80:
+                    roi[row,col] = 0
+                    eroded[row, col] = 0
+
+
+        background = cv2.bitwise_not(eroded)            
+        # cv2.imwrite(region_file, roi)
+        # cv2.imshow('region', roi+background)
         # cv2.waitKey(0)
 
-        background = cv2.bitwise_not(eroded)
-        region = cv2.bitwise_and(src, src, mask=eroded)
-
-        cv2.imwrite(region_file, region)
-        cv2.imshow('region', region+background)
-        cv2.waitKey(0)
     print('Totally time cost:{:.3f}'.format(time.time() - time_start))    
 
         
