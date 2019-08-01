@@ -99,10 +99,10 @@ def angleFilter(mask, quantized, quantized_flag = False):
 
 def preprocessing():
     total_num = 28
-    sample_id = 2  
+    sample_id = 0  
     threshold = 160
-    exposure = 10
-    write_flag = True
+    exposure = 6
+    write_flag = False
 
     sobel_mask_vect = []
     src_vect = []
@@ -113,8 +113,12 @@ def preprocessing():
         if write_flag:
             src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.jpg'
             output_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.png'
+
+            IN_src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '_IN/' + 'TT' + '/' + '{:02d}'.format(pic_num) + '.png'
+            # output_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '_IN/' + 'TT' + '/' + '{:02d}'.format(pic_num) + '.png'
             # region_file = './roi/region_' + str(pic_num) + '.png'
 
+            print(src_file)
             img = cv2.imread(src_file)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             m,n = img.shape
@@ -122,12 +126,18 @@ def preprocessing():
             new_img[3:253,3:253] = img
             cv2.imwrite(output_file, new_img)
             new_img_copy = new_img.copy()
-            src_vect.append(new_img_copy)
+
+            IN_img = cv2.imread(IN_src_file)
+            IN_img = cv2.cvtColor(IN_img, cv2.COLOR_BGR2GRAY)
+            src_vect.append(IN_img)
         else:
-            src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.png'
+            src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.png'\
+            IN_src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '_IN/' + 'TT' + '/' + '{:02d}'.format(pic_num) + '.png'
             new_img = cv2.imread(src_file)
             new_img = cv2.cvtColor(new_img,cv2.COLOR_BGR2GRAY)
-            src_vect.append(new_img)
+            IN_img = cv2.imread(IN_src_file)
+            IN_img = cv2.cvtColor(IN_img, cv2.COLOR_BGR2GRAY)
+            src_vect.append(IN_img)
 
 
         sobel_mag = np.zeros(new_img.shape, np.float)
@@ -166,6 +176,8 @@ def preprocessing():
         # sobel_mask = cv2.blur(sobel_mask, (3,3))
         # contour_vect.append(contour)
 
+        # cv2.imshow('sobel', sobel_mask)
+        # cv2.waitKey(0)
         sobel_mask_vect.append(sobel_mask)
 
     return sobel_mask_vect, src_vect
@@ -212,9 +224,9 @@ if __name__ == "__main__":
 
 
         background = cv2.bitwise_not(eroded)            
-        # cv2.imwrite(region_file, roi)
-        # cv2.imshow('region', roi+background)
-        # cv2.waitKey(0)
+        cv2.imwrite(region_file, roi)
+        cv2.imshow('region', roi+background)
+        cv2.waitKey(0)
 
     print('Totally time cost:{:.3f}'.format(time.time() - time_start))    
 

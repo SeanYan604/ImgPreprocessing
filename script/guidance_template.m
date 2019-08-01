@@ -18,7 +18,7 @@ for i = 0:temp_num
     background_sum = [ background_sum; pix_vect];
     figure(1);
     h = histogram(pix_vect,'EdgeColor','none','BinWidth',0.5,'FaceColor',coArray(i+1));
-    axis([180,250,0,1000]);
+    axis([100,250,0,1000]);
     hold on;
     values = h.Values;
     edges = h.BinEdges;
@@ -105,7 +105,7 @@ figure(2);
 % end
 %------------------------------------------------------------------
 h = histogram(background_sum,'EdgeColor','none','BinWidth',0.5,'FaceColor','#0072BD');
-axis([180,250,0,3000]);
+axis([100,250,0,3000]);
 hold on;
 values = h.Values;
 edges = h.BinEdges;
@@ -130,10 +130,11 @@ plot(x,y,'-','Color','#0072BD','LineWidth',2);
 
 y2 = normpdf(x, fitresult.b1, fitresult.c1 / 1.414); % 得到f(t) = 1/c*fH
 
-test_num = 11 ;
-for o=8:test_num
+test_num = 26 ;
+for o=0:test_num
     target_img = imread(strcat('../roi/region_',sprintf('%02d',o),'.png'));
-    img_compressed = CompressImg(target_img);
+%     img_compressed = CompressImg(target_img);
+    [img_compressed, map] = ExpandImg(target_img);
     [m,n] = size(img_compressed);
 
     syms t xi
@@ -159,17 +160,54 @@ for o=8:test_num
     % initial_template = uint8(initial_template);
     % imshow(initial_template);
 
-    [defect_mask, defect_rgb] = subtraction_operation(initial_template, img_compressed, centerpoints_(2, :));
+    [D] = subtraction_operation(initial_template, img_compressed, centerpoints_(2, :));
 
-    [result, mask] = Uncompressing(defect_mask, target_img);
-    figure;
-    subplot(1,3,1);
-    imshow(target_img);
-    subplot(1,3,2);
-    imshow(mask);
-    subplot(1,3,3);
-    imshow(result);
+%     [result, mask] = Uncompressing(defect_mask, target_img);
+    
+    % reverse sort
+    R = zeros(m,n);
+    for i = 1:n
+        for j = 1:m
+            if(map(j,i))
+                R(map(j,i),i) = D(j,i);
+            end
+        end
+    end
+    %-----------------------Defect Location byAdaptive Threshold
+    L = (min(min(abs(D))));
+    W = 100; H = 200;
+    THl = W*log(sigma)/log(mu);
+    THl = max(THl, L);
+    THh = THl + H;
+    % THl = 20;
+    % THh = 200;
+    
+    
+    defect_rgb = zeros(m,n,3);
+    defect_rgb(:,:,1) = target_img;
+    defect_rgb(:,:,2) = target_img;
+    defect_rgb(:,:,3) = target_img;
+    defect_mask = zeros(m,n);
 
+    for i =1:m
+        for j = 1:n
+            if(R(i,j) > THl || R(i,j) < -THh)
+                defect_mask(i,j) = 255;
+                defect_rgb(i,j,:) = [255,0,0];
+            end
+        end
+    end
+ 
+%     figure;
+%     subplot(1,3,1);
+%     imshow(target_img);
+%     subplot(1,3,2);
+%     imshow(uint8(defect_mask));
+%     subplot(1,3,3);
+%     imshow(uint8(defect_rgb));
+    
+    defect_rgb = uint8(defect_rgb);
+    imwrite(defect_rgb, strcat('../Detect_result/region_',sprintf('%02d',o),'.png'));
 % imwrite(initial_template, 'initial_template.png');
 end
 

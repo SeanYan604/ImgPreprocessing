@@ -1,0 +1,3 @@
+This package is compiled in the following two environments:
+WindowsXP  x86 + MATLAB2008b + VS2005
+Windows2K3 x64 + MATLAB2008b + VS2008

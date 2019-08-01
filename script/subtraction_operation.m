@@ -1,17 +1,21 @@
-function [defect_mask, defect_rgb] = subtraction_operation(initial_template, img_compressed, distribution)
+function [D] = subtraction_operation(initial_template, img_compressed, distribution)
 % test_img = imread('test_image_5.png');
 img_compressed = uint8(img_compressed);
 load('para.mat','mu','sigma');
-[test_img_sort,sort_index] = sort(img_compressed, 1);
-figure('name','Result');
-subplot(2,3,1);
-imshow(img_compressed);
-subplot(2,3,2);
-imshow(test_img_sort);
+
+% sorting is canceled
+% [test_img_sort,sort_index] = sort(img_compressed, 1);
+
+test_img_sort = img_compressed;
+% figure('name','Result');
+% subplot(2,2,1);
+% imshow(img_compressed);
+% subplot(2,2,2);
+% imshow(test_img_sort);
 
 % initial_template = imread('initial_template.png');
 [m,n] = size(initial_template);
-gap_pix = 2;
+gap_pix = 1;
 Vl = initial_template(gap_pix,1);
 Vh = initial_template(m-gap_pix,1);
 
@@ -31,8 +35,8 @@ for j = 1:n
 %     Xjv(1:Qj(j),j) = calculateXi_(distribution,Qj(j));
     Xjv(1:Qj(j),j) = calculateXi(mu,sigma,Qj(j));
 end
-subplot(2,3,3);
-imshow(uint8(255*mask));
+% subplot(2,2,3);
+% imshow(uint8(255*mask));
 
 Q_index = 1;
 for j = 1:n
@@ -46,46 +50,11 @@ for j = 1:n
     end
     Q_index = 1;
 end
-subplot(2,3,4);
-imshow(uint8(C));
+% subplot(2,2,4);
+% imshow(uint8(C));
 
 D = C - double(test_img_sort);
 
-% reverse sort
-R = zeros(m,n);
-for i = 1:m
-    for j = 1:n
-        R(sort_index(i,j),j) = D(i,j);
-    end
-end
-%-----------------------Defect Location byAdaptive Threshold
-L = (min(min(abs(D))));
-W = 50; H = 200;
-THl = W*log(sigma)/log(mu);
-THl = max(THl, L);
-THh = THl + H;
-% THl = 20;
-% THh = 200;
-
-defect_rgb = zeros(m,n,3);
-defect_rgb(:,:,1) = img_compressed;
-defect_rgb(:,:,2) = img_compressed;
-defect_rgb(:,:,3) = img_compressed;
-defect_mask = zeros(m,n);
-
-for i =1:m
-    for j = 1:n
-        if(R(i,j) > THl || R(i,j) < -THh)
-            defect_mask(i,j) = 255;
-            defect_rgb(i,j,:) = [255,0,0];
-        end
-    end
-end
-
-subplot(2,3,5);
-imshow(uint8(defect_mask));
-subplot(2,3,6);
-imshow(uint8(defect_rgb));
 end
 
 

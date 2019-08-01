@@ -141,6 +141,7 @@ class AEGenerator_SK(nn.Module):
 
 def AEprocessing(img_files):
 
+    model_id = 726
     model_is_trained_parallel = False
 
     if not os.path.exists('../Test_Image'):
@@ -176,7 +177,7 @@ def AEprocessing(img_files):
         model.to(device)
     # model.load_state_dict(torch.load('./model/aug/conv_aae_epoch_2990.pth'))
     
-    checkpoint = torch.load('../Model/GAN/aegan_epoch_726.pth')
+    checkpoint = torch.load('../Model/GAN/aegan_epoch_{}.pth'.format(model_id))
     # here, checkpoint is a dict with the keys you defined before
     model.load_state_dict(checkpoint['model'])
 
@@ -199,8 +200,8 @@ def AEprocessing(img_files):
     for i,singleimg in enumerate(output_imgs):
         _,singleimg = cv2.threshold(singleimg, 170, 255, 0)
         contours.append(singleimg)
-        cv2.imwrite("./Test_Image/output/{}_noise_de.png".format(i),singleimg)
-        cv2.imwrite("./Test_Image/output/{}_noise.png".format(i),noise_imgs[i])
+        cv2.imwrite("../Test_Image/output/{}_noise_de.png".format(i),singleimg)
+        cv2.imwrite("../Test_Image/output/{}_noise.png".format(i),noise_imgs[i])
     
     return contours
 
