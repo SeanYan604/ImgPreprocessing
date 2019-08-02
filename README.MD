@@ -19,8 +19,10 @@ This is Pytorch code for edge connection with GAN,in which a autoencoder structu
     * output
 * src
     * AAE.py
+    * AAEWithClassifier.py
     * datasetGenerate.py
     * testAAE.py
+    * testAAEWithClassifier.py
     * region.py
 * README.md
 * script                            : Matlab scripts
@@ -59,4 +61,6 @@ Using Matlab opening guidence_template.m
 
 ## 3. Recently updata:
 
-19.7.26:  Updata AAE.py, region.py, testAAE.py; The problem that the holes inside mask expanded is resolved.
+19.7.26:  Update AAE.py, region.py, testAAE.py; The problem that the holes inside mask expanded is resolved.
+
+19.8.02:  Update AAEWithClassifier.py, testAAEWithClassifier.py; Add illumination normalization procedure for origin images, then choose SQI technique results as sources. 
