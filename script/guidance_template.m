@@ -2,7 +2,7 @@ clear;
 clc;
 close all;
 
-temp_num = 5;
+temp_num = 14;
 background_sum = [];
 
 % for i=3:temp_num
@@ -12,12 +12,12 @@ background_sum = [];
 % end
 
 coArray=['y','m','c','r','g','b','w','k'];%初始颜色数组
-for i = 0:temp_num
+for i =1:temp_num
     background = imread(strcat('../roi/region_',sprintf('%02d',i),'.png'));
     pix_vect = pixExtraction(background);
     background_sum = [ background_sum; pix_vect];
     figure(1);
-    h = histogram(pix_vect,'EdgeColor','none','BinWidth',0.5,'FaceColor',coArray(i+1));
+    h = histogram(pix_vect,'EdgeColor','none','BinWidth',0.5,'FaceColor',coArray(mod(i,8)+1));
     axis([100,250,0,1000]);
     hold on;
     values = h.Values;
@@ -28,7 +28,7 @@ for i = 0:temp_num
     centerpoints(2,:) = values;
     centerpoints(:,values(:)==0) = [];
     val = spcrv(centerpoints,4);
-    plot(val(1,:),val(2,:),coArray(i+1),'LineWidth',2);
+    plot(val(1,:),val(2,:),coArray(mod(i,8)+1),'LineWidth',2);
     hold on;
 end
 
@@ -133,8 +133,9 @@ y2 = normpdf(x, fitresult.b1, fitresult.c1 / 1.414); % 得到f(t) = 1/c*fH
 test_num = 26 ;
 for o=0:test_num
     target_img = imread(strcat('../roi/region_',sprintf('%02d',o),'.png'));
+    mask_img = imread(strcat('../Template/bin_mask/region_',sprintf('%02d',o),'.png'));
 %     img_compressed = CompressImg(target_img);
-    [img_compressed, map] = ExpandImg(target_img);
+    [img_compressed, map] = ExpandImg(target_img, mask_img);
     [m,n] = size(img_compressed);
 
     syms t xi
@@ -175,7 +176,7 @@ for o=0:test_num
     end
     %-----------------------Defect Location byAdaptive Threshold
     L = (min(min(abs(D))));
-    W = 100; H = 200;
+    W = 60; H = 50;
     THl = W*log(sigma)/log(mu);
     THl = max(THl, L);
     THh = THl + H;
@@ -193,11 +194,23 @@ for o=0:test_num
         for j = 1:n
             if(R(i,j) > THl || R(i,j) < -THh)
                 defect_mask(i,j) = 255;
-                defect_rgb(i,j,:) = [255,0,0];
             end
         end
     end
  
+    for i = 1:m
+        for j = 1:n
+            if(defect_mask(i,j) > 0)
+                adjecent = defect_mask(i-1,j-1)+defect_mask(i-1,j)+defect_mask(i-1,j+1)+defect_mask(i,j-1)+defect_mask(i,j+1) ...
+                    +defect_mask(i+1,j-1)+defect_mask(i+1,j)+defect_mask(i+1,j+1);
+                if(adjecent == 0)
+                    defect_mask(i,j) = 0;
+                else
+                    defect_rgb(i,j,:) = [255,0,0];
+                end
+            end
+        end
+    end
 %     figure;
 %     subplot(1,3,1);
 %     imshow(target_img);
@@ -205,6 +218,7 @@ for o=0:test_num
 %     imshow(uint8(defect_mask));
 %     subplot(1,3,3);
 %     imshow(uint8(defect_rgb));
+    
     
     defect_rgb = uint8(defect_rgb);
     imwrite(defect_rgb, strcat('../Detect_result/region_',sprintf('%02d',o),'.png'));

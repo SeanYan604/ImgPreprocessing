@@ -1,4 +1,4 @@
-function [img_expanded, map] = ExpandImg(input_src)
+function [img_expanded, map] = ExpandImg(input_src, mask)
 %Expanding ROI to a 256*256 square image
 % map is the index of vect of each column.
     [m,n] = size(input_src);
@@ -9,7 +9,7 @@ function [img_expanded, map] = ExpandImg(input_src)
         vect_pos = zeros(256,1);
         count = 0;
         for j = 1:m
-            if(input_src(j,i) > 0)
+            if(mask(j,i) > 0)
                 count = count + 1;
                 vect(count) = input_src(j,i);
                 vect_pos(count) = j;

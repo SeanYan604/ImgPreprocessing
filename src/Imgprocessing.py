@@ -4,6 +4,7 @@ import numpy as np
 import math
 import time
 import testAAE
+import testAAEWithClassifier
 import region
 
 def quantizeAngle(angle):
@@ -114,7 +115,7 @@ def preprocessing():
             src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.jpg'
             output_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.png'
 
-            IN_src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '_IN/' + 'TT' + '/' + '{:02d}'.format(pic_num) + '.png'
+            IN_src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '_IN/' + 'SQI' + '/' + '{:02d}'.format(pic_num) + '.png'
             # output_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '_IN/' + 'TT' + '/' + '{:02d}'.format(pic_num) + '.png'
             # region_file = './roi/region_' + str(pic_num) + '.png'
 
@@ -131,8 +132,8 @@ def preprocessing():
             IN_img = cv2.cvtColor(IN_img, cv2.COLOR_BGR2GRAY)
             src_vect.append(IN_img)
         else:
-            src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.png'\
-            IN_src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '_IN/' + 'TT' + '/' + '{:02d}'.format(pic_num) + '.png'
+            src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.png'
+            IN_src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '_IN/' + 'SQI' + '/' + '{:02d}'.format(pic_num) + '.png'
             new_img = cv2.imread(src_file)
             new_img = cv2.cvtColor(new_img,cv2.COLOR_BGR2GRAY)
             IN_img = cv2.imread(IN_src_file)
@@ -198,6 +199,8 @@ if __name__ == "__main__":
 
 
     output_img_vect = testAAE.AEprocessing(sobel_mask_vect)
+    # output_img_vect = testAAEWithClassifier.AEprocessing(sobel_mask_vect)
+    
     print('AAE time cost:{:.3f}'.format(time.time() - time_end))
 
     for i, singleimg in enumerate(output_img_vect):
@@ -207,6 +210,7 @@ if __name__ == "__main__":
         # cv2.imshow('src',src)
         # cv2.waitKey(0)
         region_file = '../roi/region_{:02d}'.format(i) + '.png'
+        mask_file = '../Template/bin_mask/region_{:02d}'.format(i) + '.png'
         mask = region.regionGenerate(singleimg)
         
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3))
@@ -225,6 +229,7 @@ if __name__ == "__main__":
 
         background = cv2.bitwise_not(eroded)            
         cv2.imwrite(region_file, roi)
+        cv2.imwrite(mask_file, eroded)
         cv2.imshow('region', roi+background)
         cv2.waitKey(0)
 

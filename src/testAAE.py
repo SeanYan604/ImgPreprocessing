@@ -141,8 +141,8 @@ class AEGenerator_SK(nn.Module):
 
 def AEprocessing(img_files):
 
-    model_id = 726
-    model_is_trained_parallel = False
+    model_id = 802
+    model_is_trained_parallel = True
 
     if not os.path.exists('../Test_Image'):
         os.mkdir('../Test_Image')
