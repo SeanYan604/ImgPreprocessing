@@ -120,15 +120,20 @@ centerpoints_ = double(centerpoints_);
 
 x = centerpoints_(1,:);
 y = centerpoints_(2,:);
-[fitresult, gof] = createNormal_H(x, y);
+% [fitresult, gof] = createNormal_H(x, y);       % Using one guassian function to fitting
+[fitresult, gof] = createTripleNorm(x, y);       % Using three guassian function to fitting
+
+% The function is :val(x) = a1*exp(-((x-b1)/c1)^2) + a2*exp(-((x-b2)/c2)^2) + a3*exp(-((x-b3)/c3)^2)
+
 x = edges(1:end-1)+0.5*binwidth;
-% y = fitresult.a1 * normpdf(x, fitresult.b1, fitresult.c1);
-y = fitresult.a1 * gaussmf(x, [fitresult.c1 / 1.414, fitresult.b1]);  %  得到fH
+% y = fitresult.a1 * gaussmf(x, [fitresult.c1 / 1.414, fitresult.b1]);  %  得到fH
+y = fitresult.a1*gaussmf(x,[fitresult.c1/1.414,fitresult.b1])+fitresult.a2*gaussmf(x,[fitresult.c2/1.414,fitresult.b2])+fitresult.a3*gaussmf(x,[fitresult.c3/1.414,fitresult.b3]);
+
 
 figure(2);
 plot(x,y,'-','Color','#0072BD','LineWidth',2);
 
-y2 = normpdf(x, fitresult.b1, fitresult.c1 / 1.414); % 得到f(t) = 1/c*fH
+% y2 = normpdf(x, fitresult.b1, fitresult.c1 / 1.414); % 得到f(t) = 1/c*fH
 
 test_num = 26 ;
 for o=0:test_num
@@ -141,13 +146,25 @@ for o=0:test_num
     syms t xi
     y_f = normpdf(t, fitresult.b1, fitresult.c1 / 1.414);
     %-------------------------------
-    mu = fitresult.b1;
-    sigma = fitresult.c1 / 1.414;
+%     mu = fitresult.b1;
+%     sigma = fitresult.c1 / 1.414;
+    mu = zeros(3,1);
+    sigma = zeros(3,1);
+    mu(1) = fitresult.b1;
+    mu(2) = fitresult.b2;
+    mu(3) = fitresult.b3;
+
+    sigma(1) = fitresult.c1 / 1.414;
+    sigma(2) = fitresult.c2 / 1.414;
+    sigma(3) = fitresult.c3 / 1.414;
+
+%     save('fitresult.mat','fitresult');
     save('para.mat','mu','sigma'); %保存func的参数mu和sigma
     %-------------------------------
     initial_template = zeros(m,n);
 %     Xi = calculateXi_(centerpoints_(2,:),m);
-    Xi = calculateXi(mu, sigma, m);
+%     Xi = calculateXi(mu, sigma, m);
+    Xi = calculateXi_tri(mu,sigma, m);
 
 
     for i = 1:m
@@ -157,12 +174,13 @@ for o=0:test_num
         initial_template(:,i) = initial_template(:,1);
     end
 
-    % figure(4);
-    % initial_template = uint8(initial_template);
-    % imshow(initial_template);
+%     figure(4);
+%     initial_template = uint8(initial_template);
+%     imshow(initial_template);
 
+    tic;
     [D] = subtraction_operation(initial_template, img_compressed, centerpoints_(2, :));
-
+    toc
 %     [result, mask] = Uncompressing(defect_mask, target_img);
     
     % reverse sort
@@ -176,8 +194,8 @@ for o=0:test_num
     end
     %-----------------------Defect Location byAdaptive Threshold
     L = (min(min(abs(D))));
-    W = 60; H = 50;
-    THl = W*log(sigma)/log(mu);
+    W = 60; H = 30;
+    THl = W*log(mean(sigma(:)))/log(mean(mu(:)));
     THl = max(THl, L);
     THh = THl + H;
     % THl = 20;

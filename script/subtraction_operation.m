@@ -2,6 +2,7 @@ function [D] = subtraction_operation(initial_template, img_compressed, distribut
 % test_img = imread('test_image_5.png');
 img_compressed = uint8(img_compressed);
 load('para.mat','mu','sigma');
+% load('fitresult.mat','fitresult');
 
 % sorting is canceled
 % [test_img_sort,sort_index] = sort(img_compressed, 1);
@@ -33,7 +34,8 @@ for j = 1:n
         end
     end
 %     Xjv(1:Qj(j),j) = calculateXi_(distribution,Qj(j));
-    Xjv(1:Qj(j),j) = calculateXi(mu,sigma,Qj(j));
+%     Xjv(1:Qj(j),j) = calculateXi(mu,sigma,Qj(j));
+    Xjv(1:Qj(j),j) = calculateXi_tri(mu,sigma,Qj(j));
 end
 % subplot(2,2,3);
 % imshow(uint8(255*mask));
