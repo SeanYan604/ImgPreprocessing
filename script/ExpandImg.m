@@ -24,15 +24,15 @@ function [img_expanded, map] = ExpandImg(input_src, mask)
                 index=index+1;
                 img_expanded(index,i) = vect(k);
                 map(index,i) = pos(k);
-                if(vect(k+1) > vect(k))
-                    step = floor((vect(k+1)-vect(k))/pad);
-                else
-                    step = ceil((vect(k+1)-vect(k))/pad);
-                end
+%                 if(vect(k+1) > vect(k))
+%                     step = floor((vect(k+1)-vect(k))/pad);
+%                 else
+%                     step = ceil((vect(k+1)-vect(k))/pad);
+%                 end
                 temp = vect(k);
                 for l = 1:pad-1
                     index = index+1;
-                    temp = temp + step;
+%                     temp = temp + step;
                     img_expanded(index,i) = temp;
                 end
             end

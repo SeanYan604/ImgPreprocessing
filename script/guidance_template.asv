@@ -172,7 +172,7 @@ for o=0:test_num
 %     Xi = calculateXi(mu, sigma, m);
     Xi = calculateXi_tri(mu,sigma,alpha, m);
     
-%     figure('name','mix')
+    figure('name','mix')
 %     y_mix_1 =  (alpha(1)*normpdf(x, mu(1), sigma(1))+alpha(2)*normpdf(x, mu(2), sigma(2))+alpha(3)*normpdf(x, mu(3), sigma(3)));
 %     y_mix_2 =  fitresult.a1*gaussmf(x, [sigma(1),mu(1)])+fitresult.a2*gaussmf(x, [sigma(2),mu(2)])+fitresult.a3*gaussmf(x, [sigma(3),mu(3)]);
 %     plot(x,y_mix_1);
