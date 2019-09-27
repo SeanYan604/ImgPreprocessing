@@ -37,13 +37,12 @@ def SQI(input_img):
         scale_idx += 1
         hsize = para[i][0]
         sigma = para[i][1]
+        a = time.time()
         img_smo = cv2.GaussianBlur(img_in, (hsize,hsize), sigma)
-
         QI_cur = img_in / img_smo
         QI_cur = 1 / (1 + np.exp(-QI_cur))
         QI_cur = 255 * normalization(QI_cur)
         QI_cur = QI_cur.astype(np.uint8).astype(np.float)
-
         output_img = output_img + QI_cur
 
     
