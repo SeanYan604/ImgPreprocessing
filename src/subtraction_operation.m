@@ -17,7 +17,7 @@ L=0;R=256;
 
 % initial_template = imread('initial_template.png');
 [m,n] = size(initial_template);
-gap_pix = 20;
+gap_pix = 1;
 Vl = initial_template(gap_pix,1);
 Vh = initial_template(m-gap_pix,1);
 for k = 1:n-1

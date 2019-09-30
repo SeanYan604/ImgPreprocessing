@@ -104,7 +104,7 @@ figure(2);
 %     end
 % end
 %------------------------------------------------------------------
-h = histogram(background_sum,'EdgeColor','none','BinWidth',0.5,'FaceColor','#0072BD');
+h = histogram(background_sum,'EdgeColor','none','BinWidth',0.5);
 axis([100,250,0,6000]);
 hold on;
 values = h.Values;

@@ -5,6 +5,9 @@ import time
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab  
 from scipy.optimize import curve_fit
+import warnings
+import matplotlib.cbook
+warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 
 temp_num = 15
 
@@ -47,11 +50,11 @@ def Chara_func (temp_num):
     y = nvalues / pixel_sum
     popt, pcov = curve_fit(gaussian, x, y, p0=[0.03,0.02,0.02,133,133,149,6,20,10])
     end = time.time()
-    print('Cost:{:.5f}'.format(end-start))
-    plt.plot(x,y,'b+:',label='data')  
-    plt.plot(x,gaussian(x,*popt),'ro:',label='fit')  
-    plt.legend()  
-    plt.show()
+    print('Time Cost:{:.5f}'.format(end-start))
+    # plt.plot(x,y,'b+:',label='data')  
+    # plt.plot(x,gaussian(x,*popt),'ro:',label='fit')  
+    # plt.legend()  
+    # plt.show()
 
     alpha = popt[0:3] * 1.772453 * popt[6:]
     mu = popt[3:6]
@@ -60,5 +63,134 @@ def Chara_func (temp_num):
     para = np.vstack((alpha, mu, sigma))
     np.save('parameter.npy', para)
 
+def ExpandImg(src_img, mask_img):
+    [m,n] = src_img.shape
+    img_expanded = np.zeros(src_img.shape, np.uint8)
+    img_map = np.zeros(src_img.shape, np.uint8)
+    temp_ve = np.zeros(m,np.uint8)
+    temp_vm = np.zeros(m,np.uint8)
+
+    for i in range(n):
+        column_src = src_img[:,i]
+        column_mask = mask_img[:,i]
+        vect_pos = np.arange(0,256)
+        vect = column_src[column_mask > 0]
+        vect_pos = vect_pos[column_mask > 0]
+
+        if(len(vect)):
+            vect = np.sort(vect, kind='mergesort')
+            # index = np.argsort(vect)
+            pos = vect_pos[np.argsort(vect)]
+            pad = np.floor(256/len(vect)).astype(np.uint8)
+            for j in range(len(vect)-1):
+                temp_ve[j*pad:(j+1)*pad] = vect[j]
+                temp_vm[j*pad] = pos[j]
+            
+            temp_ve[pad*(len(vect)-1):] = vect[-1]
+            temp_vm[pad*(len(vect)-1)] = pos[-1]
+
+        img_expanded[:,i] = temp_ve
+        img_map[:,i] = temp_vm
+
+            
+    
+    # cv2.imshow('expanded',img_expanded)
+    # cv2.waitKey(0)
+    return img_expanded, img_map
+
+def CalculateXi_tri(para, Q):
+    Xi = np.zeros(Q, np.uint8)
+    if(Q == 0):
+        return Xi
+    alpha = para[0]
+    mu = para[1]
+    sigma = para[2]
+    sum_ = 0
+    i = 1
+    for t in range(1,256):
+        if(sum_ >= i/(Q+1)):
+            Xi[i-1] = t
+            i += 1
+            while (sum_ >= (i/(Q+1))):
+                Xi[i-1] = t
+                i += 1
+            if(i == Q+1):
+                break
+            sum_ = sum_+(alpha[0]*mlab.normpdf(t, mu[0], sigma[0])+alpha[1]*mlab.normpdf(t, mu[1], sigma[1])+alpha[2]*mlab.normpdf(t, mu[2], sigma[2]))/np.sum(alpha)
+
+        else:
+            sum_ = sum_+(alpha[0]*mlab.normpdf(t, mu[0], sigma[0])+alpha[1]*mlab.normpdf(t, mu[1], sigma[1])+alpha[2]*mlab.normpdf(t, mu[2], sigma[2]))/np.sum(alpha)
+    return Xi
+
+def sub_operation(para, initial_template, img_expanded):
+    [m,n] = img_expanded.shape
+    alpha = para[0]
+    mu = para[1]
+    sigma = para[2]
+
+    L = 0
+    R = 256
+    gap_pix = 1
+    vl = initial_template[gap_pix-1, 0]
+    vh = initial_template[m-gap_pix, 0]
+
+    for k in range(n-1):
+        if(img_expanded[m-1, k]==0 and img_expanded[m-1, k+1]>0):
+            L = k+1
+        if(img_expanded[m-1, k]>0 and img_expanded[m-1, k+1]==0):
+            R = k+1
+
+    sub_template = np.zeros([m,n], np.uint8)
+    sub_template[:,L:R] = initial_template[:,L:R]
+    temp_mask = np.zeros([m,n], np.uint8)
+    Qj = np.zeros(n, np.uint8)
+    C = sub_template
+    # Xjv = np.zeros(m, np.uint8)  
+    # ------------------------------------
+    temp_mask_1 = (img_expanded>=vl)+0
+    temp_mask_2 = (img_expanded<=vh)+0
+    temp_mask = temp_mask_1*temp_mask_2
+    Qj = np.sum(temp_mask, axis=0)
+    # ------------------------------------
+    # print(Qj)
+
+    for i in range(n):
+        if(Qj[i] == 0):
+            continue
+        index = np.arange(m)
+        Xjv = CalculateXi_tri(para, Qj[i])
+        index_ = index[temp_mask[:,i]==1]
+        C[index_[0]:index_[-1]+1,i] = Xjv
+
+    
+
+
+
+
+def TempGenAndDetection(ParaName, roi_src_img, roi_mask_img):
+    para = np.load(ParaName)
+    [m,n] = roi_mask_img.shape
+    img_expanded, img_map = ExpandImg(roi_src_img, roi_mask_img)
+    Xi = CalculateXi_tri(para, m)
+    initial_template = np.zeros([m,n], np.uint8)
+    for i in range(n):
+        initial_template[:,i] = Xi
+    
+    sub_operation(para, initial_template, img_expanded)
+    
+
+
 if __name__ == "__main__":
-    Chara_func(temp_num)
+    # Chara_func(temp_num)
+    ParaName = 'parameter.npy'
+
+    test_num = 0
+    roi_src_img = cv2.imread('../roi/region_{:02d}.png'.format(test_num))
+    roi_mask_img = cv2.imread('../Template/bin_mask/region_{:02d}.png'.format(test_num))
+    roi_src_img = cv2.cvtColor(roi_src_img, cv2.COLOR_BGR2GRAY)
+    roi_mask_img = cv2.cvtColor(roi_mask_img, cv2.COLOR_BGR2GRAY)
+
+    start = time.time()
+    TempGenAndDetection(ParaName, roi_src_img, roi_mask_img)
+    end = time.time()
+    print('Total cost:{:.4f}'.format(end - start))
