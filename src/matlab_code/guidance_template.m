@@ -142,6 +142,7 @@ for o=0:test_num
     target_img = imread(strcat('../roi/region_',sprintf('%02d',o),'.png'));
     mask_img = imread(strcat('../Template/bin_mask/region_',sprintf('%02d',o),'.png'));
 %     img_compressed = CompressImg(target_img);
+    tic;
     [img_compressed, map] = ExpandImg(target_img, mask_img);
     [m,n] = size(img_compressed);
 
@@ -191,9 +192,9 @@ for o=0:test_num
 %     initial_template = uint8(initial_template);
 %     imshow(initial_template);
 
-    tic;
+    
     [D] = subtraction_operation(initial_template, img_compressed, centerpoints_(2, :));
-    toc
+%     toc
 %     [result, mask] = Uncompressing(defect_mask, target_img);
     
     % reverse sort
@@ -250,7 +251,7 @@ for o=0:test_num
 %     subplot(1,3,3);
 %     imshow(uint8(defect_rgb));
     
-    
+    toc;
     defect_rgb = uint8(defect_rgb);
 %     imwrite(defect_rgb, strcat('../Detect_result/region_',sprintf('%02d',o),'.png'));
 % imwrite(initial_template, 'initial_template.png');

@@ -29,6 +29,7 @@ def normalization(data):
 
 
 def SQI(input_img):
+    input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2GRAY)
     output_img = np.zeros(input_img.shape, np.float)
     img_in = input_img.astype(np.float)
     size = len(para)

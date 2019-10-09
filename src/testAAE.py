@@ -200,8 +200,8 @@ def AEprocessing(img_files):
     for i,singleimg in enumerate(output_imgs):
         _,singleimg = cv2.threshold(singleimg, 170, 255, 0)
         contours.append(singleimg)
-        cv2.imwrite("../Test_Image/output/{}_noise_de.png".format(i),singleimg)
-        cv2.imwrite("../Test_Image/output/{}_noise.png".format(i),noise_imgs[i])
+        # cv2.imwrite("../Test_Image/output/{}_noise_de.png".format(i),singleimg)
+        # cv2.imwrite("../Test_Image/output/{}_noise.png".format(i),noise_imgs[i])
     
     return contours
 

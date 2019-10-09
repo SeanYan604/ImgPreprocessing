@@ -1,5 +1,6 @@
 
 import numpy as np
+from numba import jit
 import cv2
 import time
 import matplotlib.pyplot as plt
@@ -22,8 +23,6 @@ def Chara_func (temp_num):
     bg_sum = np.array([])
     for i in range(1,temp_num):
         img_bg = cv2.imread('../roi/region_{:02d}.png'.format(i))
-        # cv2.imshow('img',img_bg)
-        # cv2.waitKey(0)
         img_bg = cv2.cvtColor(img_bg, cv2.COLOR_BGR2GRAY)
         pix_vect = img_bg[img_bg > 0]
         bg_sum = np.hstack((bg_sum, pix_vect))
@@ -37,7 +36,6 @@ def Chara_func (temp_num):
 
     pixel_sum = np.sum(values)
 
-    print(nvalues.shape, nedges.shape)
     # centerpoints = np.vstack((nedges, nvalues))
     # print(centerpoints.shape)
     # plt.bar(centerpoints[0,:], height=centerpoints[1,:]/pixel_sum, width=0.5)
@@ -67,10 +65,10 @@ def ExpandImg(src_img, mask_img):
     [m,n] = src_img.shape
     img_expanded = np.zeros(src_img.shape, np.uint8)
     img_map = np.zeros(src_img.shape, np.uint8)
-    temp_ve = np.zeros(m,np.uint8)
-    temp_vm = np.zeros(m,np.uint8)
 
     for i in range(n):
+        temp_ve = np.zeros(m,np.uint8)
+        temp_vm = np.zeros(m,np.uint8)
         column_src = src_img[:,i]
         column_mask = mask_img[:,i]
         vect_pos = np.arange(0,256)
@@ -78,19 +76,20 @@ def ExpandImg(src_img, mask_img):
         vect_pos = vect_pos[column_mask > 0]
 
         if(len(vect)):
-            vect = np.sort(vect, kind='mergesort')
+            vect_sorted = np.sort(vect, kind='mergesort')
             # index = np.argsort(vect)
             pos = vect_pos[np.argsort(vect)]
             pad = np.floor(256/len(vect)).astype(np.uint8)
             for j in range(len(vect)-1):
-                temp_ve[j*pad:(j+1)*pad] = vect[j]
+                temp_ve[j*pad:(j+1)*pad] = vect_sorted[j]
                 temp_vm[j*pad] = pos[j]
             
-            temp_ve[pad*(len(vect)-1):] = vect[-1]
+            temp_ve[pad*(len(vect)-1):] = vect_sorted[-1]
             temp_vm[pad*(len(vect)-1)] = pos[-1]
 
         img_expanded[:,i] = temp_ve
         img_map[:,i] = temp_vm
+        # print(img_map)
 
             
     
@@ -124,9 +123,9 @@ def CalculateXi_tri(para, Q):
 
 def sub_operation(para, initial_template, img_expanded):
     [m,n] = img_expanded.shape
-    alpha = para[0]
-    mu = para[1]
-    sigma = para[2]
+    # alpha = para[0]
+    # mu = para[1]
+    # sigma = para[2]
 
     L = 0
     R = 256
@@ -162,13 +161,17 @@ def sub_operation(para, initial_template, img_expanded):
         index_ = index[temp_mask[:,i]==1]
         C[index_[0]:index_[-1]+1,i] = Xjv
 
-    
+    D = C.astype(np.float) - img_expanded.astype(np.float)
+    return D
 
+def TempGenAndDetection(ParaName, W, H, roi_src_img, roi_mask_img):
 
-
-
-def TempGenAndDetection(ParaName, roi_src_img, roi_mask_img):
     para = np.load(ParaName)
+    THl = W*np.log(np.mean(para[2]))/np.log(np.mean(para[1]))
+    THl = np.max(THl, 0)
+    THh = THl + H
+    # print(THh, THl)
+
     [m,n] = roi_mask_img.shape
     img_expanded, img_map = ExpandImg(roi_src_img, roi_mask_img)
     Xi = CalculateXi_tri(para, m)
@@ -176,8 +179,39 @@ def TempGenAndDetection(ParaName, roi_src_img, roi_mask_img):
     for i in range(n):
         initial_template[:,i] = Xi
     
-    sub_operation(para, initial_template, img_expanded)
+    D = sub_operation(para, initial_template, img_expanded)
+    R = np.zeros([m,n], np.float)
+    defect_mask = np.zeros([m,n], np.uint8)
+    defect_rgb = cv2.merge([roi_src_img, roi_src_img, roi_src_img])
+
+    for i in range(n):
+        for j in range(m):
+            if(img_map[j,i]):
+                R[img_map[j,i], i] = D[j,i]
+                if(R[img_map[j,i], i] > THl or R[img_map[j,i], i] < -THh):
+                    defect_mask[img_map[j,i], i] = 255
+                    # defect_rgb[img_map[j,i], i, :] = np.array([0, 0, 255]) 
+
+    # for j in range(1,n-1):
+    #     for i in range(1,m-1):
+    #         if(defect_mask[i,j]):
+    #             adjecent = int(defect_mask[i-1,j-1])+int(defect_mask[i-1,j])+int(defect_mask[i-1,j+1])+int(defect_mask[i,j-1]+defect_mask[i,j+1])+int(defect_mask[i+1,j-1])+int(defect_mask[i+1,j])+int(defect_mask[i+1,j+1])
+    #             if(adjecent == 0):
+    #                 defect_mask[i,j] = 0
+    #             else:
+    #                 defect_rgb[i,j,:] = np.array([0,0,255])
     
+    defect_mask = cv2.medianBlur(defect_mask, 3)
+    defect_rgb[defect_mask > 0] = np.array([0,0,255])
+
+    # defect_mask[R>THl] = 255
+    # defect_mask[R<-THh] = 255
+
+    # cv2.imshow('mask', defect_mask)
+    # cv2.waitKey(0)
+    # cv2.imshow('rgb', defect_rgb)
+    # cv2.waitKey(0)
+    return defect_mask, defect_rgb
 
 
 if __name__ == "__main__":

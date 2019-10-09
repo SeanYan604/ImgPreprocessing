@@ -8,9 +8,9 @@ load('para.mat','mu','sigma','alpha');
 % [test_img_sort,sort_index] = sort(img_compressed, 1);
 
 test_img_sort = img_compressed;
-figure('name','Result_1');
+% figure('name','Result_1');
 % subplot(1,2,1);
-imshow(img_compressed);
+% imshow(img_compressed);
 % subplot(2,2,2);
 % imshow(test_img_sort);
 L=0;R=256;
@@ -60,11 +60,11 @@ for j = 1:n
     end
     Q_index = 1;
 end
-figure('name','Result_2');
+% figure('name','Result_2');
 % subplot(1,2,2);
-imshow(uint8(C));
+% imshow(uint8(C));
 
-DrawCurve(test_img_sort, uint8(C));
+% DrawCurve(test_img_sort, uint8(C));
 D = C - double(test_img_sort);
 
 end
