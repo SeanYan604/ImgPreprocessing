@@ -98,6 +98,46 @@ def ExpandImg(src_img, mask_img):
     # cv2.waitKey(0)
     return img_expanded, img_map
 
+def ExpandImg_simple(src_img, mask_img):
+    [m,n] = src_img.shape
+    img_expanded = np.zeros(src_img.shape, np.uint8)
+    img_map = np.zeros(src_img.shape, np.uint8)
+
+    for i in range(n):
+        temp_ve = np.zeros(m,np.uint8)
+        temp_vm = np.zeros(m,np.uint8)
+        column_src = src_img[:,i]
+        column_mask = mask_img[:,i]
+        vect_pos = np.arange(0,256)
+        vect = column_src[column_mask > 0]
+        vect_pos = vect_pos[column_mask > 0]
+
+        if(len(vect)):
+            vect_sorted = np.sort(vect, kind='mergesort')
+            # index = np.argsort(vect)
+            pos = vect_pos[np.argsort(vect)]
+            # pad = np.floor(256/len(vect)).astype(np.uint8)
+            # for j in range(len(vect)-1):
+            #     temp_ve[j*pad:(j+1)*pad] = vect_sorted[j]
+            #     temp_vm[j*pad] = pos[j]
+            
+            # temp_ve[pad*(len(vect)-1):] = vect_sorted[-1]
+            # temp_vm[pad*(len(vect)-1)] = pos[-1]
+            temp_ve[:len(vect_sorted)] = vect_sorted
+            temp_vm[:len(pos)] = pos
+
+        img_expanded[:,i] = temp_ve
+        img_map[:,i] = temp_vm
+        # print(img_map)
+
+            
+    
+    # cv2.imshow('expanded',img_expanded)
+    # cv2.imshow('map', img_map)
+    # cv2.waitKey(0)
+    return img_expanded, img_map
+
+
 def CalculateXi_tri(para, Q):
     Xi = np.zeros(Q, np.uint8)
     if(Q == 0):
@@ -166,7 +206,69 @@ def sub_operation(para, initial_template, img_expanded):
         C[index_[0]:index_[-1]+1,i] = Xjv
     # print("Guidance_template_Cost:{:.5f}".format(time.time()-st))
     D = C.astype(np.float) - img_expanded.astype(np.float)
+
+    return D
+
+def sub_operation_simple(para, initial_template, img_expanded, img_map):
+    [m,n] = img_expanded.shape
+    # L = 0
+    # R = 256
+    gap_pix = 1
+    vl = initial_template[gap_pix-1, 0]
+    vh = initial_template[m-gap_pix, 0]
+    print(vl,vh)
+    # for k in range(n-1):
+    #     if(img_expanded[m-1, k]==0 and img_expanded[m-1, k+1]>0):
+    #         L = k+1
+    #     if(img_expanded[m-1, k]>0 and img_expanded[m-1, k+1]==0):
+    #         R = k+1
+
+    # sub_template = np.zeros([m,n], np.uint8)
+    # sub_template[:,L:R] = initial_template[:,L:R]
+    # temp_mask = np.zeros([m,n], np.uint8)
+    Qj = np.zeros(n, np.uint8)
+    C = np.zeros([m,n], np.uint8)
+    temp_mask = (img_map>0)+0
+    num = np.sum(temp_mask, axis=0)
+    for i in range(n):
+        index = np.linspace(0,255,num=num[i],endpoint=True)
+        index = index.astype(np.uint8)
+        temp = initial_template[index, i]
+        C[:len(temp),i] = temp
+
+    # cv2.imshow('C',C)
+    # cv2.imshow('expanded', img_expanded)
+    # cv2.waitKey(0)
+    # Xjv = np.zeros(m, np.uint8)  
+    # ------------------------------------
+    temp_mask_1 = (img_expanded>=vl)+0
+    temp_mask_2 = (img_expanded<=vh)+0
+    temp_mask_ = temp_mask_1*temp_mask_2
+
+    # cv2.imshow('mask', temp_mask_.astype(np.uint8)*255)
+    # cv2.waitKey(0)
+    Qj = np.sum(temp_mask_, axis=0)
+    # ------------------------------------
+    # print(Qj)
+
+    st = time.time()
+    for i in range(n):
+        if(Qj[i] == 0):
+            continue
+        index = np.arange(m)
+        idx = np.linspace(0,255,num=Qj[i],endpoint=True)
+        idx = idx.astype(np.uint8)
+        Xjv = initial_template[idx, i]
+        # Xjv = CalculateXi_tri(para, Qj[i])
+        # print('Xi_cost:{:.4f}'.format(time.clock() - a))
+        index_ = index[temp_mask_[:,i]==1]
+        # print(C[index_[0]:index_[-1]+1,i], Xjv)
+        C[index_[0]:index_[-1]+1,i] = Xjv
+    # print("Guidance_template_Cost:{:.5f}".format(time.time()-st))
+
     
+    D = C.astype(np.float) - img_expanded.astype(np.float)
+
     return D
 
 def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
@@ -182,7 +284,8 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
 
     st = time.time()
     [m,n] = roi_mask_img.shape
-    img_expanded, img_map = ExpandImg(roi_src_img, roi_mask_img)
+    img_expanded, img_map = ExpandImg_simple(roi_src_img, roi_mask_img)
+    # img_expanded, img_map = ExpandImg(roi_src_img, roi_mask_img)
     Xi = CalculateXi_tri(para, m)
     initial_template = np.zeros([m,n], np.uint8)
     for i in range(n):
@@ -191,12 +294,13 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
     # print("Initial_template_Cost:{:.5f}".format(ed-st))
 
 
-    D = sub_operation(para, initial_template, img_expanded)
+    D = sub_operation_simple(para, initial_template, img_expanded, img_map)
+    # D = sub_operation(para, initial_template, img_expanded)
     R = np.zeros([m,n], np.float)
     defect_mask = np.zeros([m,n], np.uint8)
     defect_rgb = cv2.merge([roi_src_img, roi_src_img, roi_src_img])
     ed_2 = time.time()
-    # print("Substraction_Cost:{:.5f}".format(ed_2 - ed))
+    print("Substraction_Cost:{:.5f}".format(ed_2 - ed))
 
     for i in range(n):
         for j in range(m):
@@ -214,7 +318,7 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
                     defect_mask[i,j] = 0
                 else:
                     defect_rgb[i,j,:] = np.array([0,0,255])
-    # print("Defect_loc_Cost:{:.5f}".format(time.time() - ed_2))
+    print("Defect_loc_Cost:{:.5f}".format(time.time() - ed_2))
     
     # defect_mask = cv2.medianBlur(defect_mask, 3)
     # defect_rgb[defect_mask > 0] = np.array([0,0,255])
@@ -230,16 +334,19 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
 
 
 if __name__ == "__main__":
-    Chara_func(temp_num)
-    # ParaName = 'parameter.npy'
+    # Chara_func(temp_num)
+    ParaName = 'parameter.npy'
 
-    # test_num = 0
-    # roi_src_img = cv2.imread('../roi/region_{:02d}.png'.format(test_num))
-    # roi_mask_img = cv2.imread('../Template/bin_mask/region_{:02d}.png'.format(test_num))
-    # roi_src_img = cv2.cvtColor(roi_src_img, cv2.COLOR_BGR2GRAY)
-    # roi_mask_img = cv2.cvtColor(roi_mask_img, cv2.COLOR_BGR2GRAY)
+    test_num = 0
+    Wh = 0.35
+    Wl = 0.7
+    roi_src_img = cv2.imread('../roi/region_{:02d}.png'.format(test_num))
+    roi_mask_img = cv2.imread('../Template/bin_mask/region_{:02d}.png'.format(test_num))
+    roi_src_img = cv2.cvtColor(roi_src_img, cv2.COLOR_BGR2GRAY)
+    roi_mask_img = cv2.cvtColor(roi_mask_img, cv2.COLOR_BGR2GRAY)
 
-    # start = time.time()
-    # TempGenAndDetection(ParaName, roi_src_img, roi_mask_img)
-    # end = time.time()
-    # print('Total cost:{:.4f}'.format(end - start))
+    start = time.time()
+    defect_mask, defect_rgb = TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img)
+    # expanded, map = ExpandImg_simple(roi_src_img, roi_mask_img)
+    end = time.time()
+    print('Total cost:{:.4f}'.format(end - start))
