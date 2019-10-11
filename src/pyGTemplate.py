@@ -8,6 +8,7 @@ import matplotlib.mlab as mlab
 from scipy.optimize import curve_fit
 import warnings
 import matplotlib.cbook
+
 warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 
 temp_num = 15
@@ -153,56 +154,70 @@ def sub_operation(para, initial_template, img_expanded):
     # ------------------------------------
     # print(Qj)
 
+    st = time.time()
     for i in range(n):
         if(Qj[i] == 0):
             continue
         index = np.arange(m)
+        a = time.clock()
         Xjv = CalculateXi_tri(para, Qj[i])
+        # print('Xi_cost:{:.4f}'.format(time.clock() - a))
         index_ = index[temp_mask[:,i]==1]
         C[index_[0]:index_[-1]+1,i] = Xjv
-
+    # print("Guidance_template_Cost:{:.5f}".format(time.time()-st))
     D = C.astype(np.float) - img_expanded.astype(np.float)
+    
     return D
 
-def TempGenAndDetection(ParaName, W, H, roi_src_img, roi_mask_img):
+def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
 
     para = np.load(ParaName)
-    THl = W*np.log(np.mean(para[2]))/np.log(np.mean(para[1]))
-    THl = np.max(THl, 0)
-    THh = THl + H
+    # THl = W*np.log(np.mean(para[2]))/np.log(np.mean(para[1]))
+    # THl = np.max(THl, 0)
+    # THh = THl + H
+    # print(THh, THl)
+    THh = Wh*(np.sum(np.dot(para[0],para[1])))/np.sum(para[0])
+    THl = -Wl*(255 - np.sum(np.dot(para[0],para[1])))/np.sum(para[0])
     # print(THh, THl)
 
+    st = time.time()
     [m,n] = roi_mask_img.shape
     img_expanded, img_map = ExpandImg(roi_src_img, roi_mask_img)
     Xi = CalculateXi_tri(para, m)
     initial_template = np.zeros([m,n], np.uint8)
     for i in range(n):
         initial_template[:,i] = Xi
-    
+    ed = time.time()
+    # print("Initial_template_Cost:{:.5f}".format(ed-st))
+
+
     D = sub_operation(para, initial_template, img_expanded)
     R = np.zeros([m,n], np.float)
     defect_mask = np.zeros([m,n], np.uint8)
     defect_rgb = cv2.merge([roi_src_img, roi_src_img, roi_src_img])
+    ed_2 = time.time()
+    # print("Substraction_Cost:{:.5f}".format(ed_2 - ed))
 
     for i in range(n):
         for j in range(m):
             if(img_map[j,i]):
                 R[img_map[j,i], i] = D[j,i]
-                if(R[img_map[j,i], i] > THl or R[img_map[j,i], i] < -THh):
+                if(R[img_map[j,i], i] > THh or R[img_map[j,i], i] < THl):
                     defect_mask[img_map[j,i], i] = 255
                     # defect_rgb[img_map[j,i], i, :] = np.array([0, 0, 255]) 
 
-    # for j in range(1,n-1):
-    #     for i in range(1,m-1):
-    #         if(defect_mask[i,j]):
-    #             adjecent = int(defect_mask[i-1,j-1])+int(defect_mask[i-1,j])+int(defect_mask[i-1,j+1])+int(defect_mask[i,j-1]+defect_mask[i,j+1])+int(defect_mask[i+1,j-1])+int(defect_mask[i+1,j])+int(defect_mask[i+1,j+1])
-    #             if(adjecent == 0):
-    #                 defect_mask[i,j] = 0
-    #             else:
-    #                 defect_rgb[i,j,:] = np.array([0,0,255])
+    for j in range(1,n-1):
+        for i in range(1,m-1):
+            if(defect_mask[i,j]):
+                adjecent = float(defect_mask[i-1,j-1])+float(defect_mask[i-1,j])+float(defect_mask[i-1,j+1])+float(defect_mask[i,j-1]+defect_mask[i,j+1])+float(defect_mask[i+1,j-1])+float(defect_mask[i+1,j])+float(defect_mask[i+1,j+1])
+                if(adjecent == 0):
+                    defect_mask[i,j] = 0
+                else:
+                    defect_rgb[i,j,:] = np.array([0,0,255])
+    # print("Defect_loc_Cost:{:.5f}".format(time.time() - ed_2))
     
-    defect_mask = cv2.medianBlur(defect_mask, 3)
-    defect_rgb[defect_mask > 0] = np.array([0,0,255])
+    # defect_mask = cv2.medianBlur(defect_mask, 3)
+    # defect_rgb[defect_mask > 0] = np.array([0,0,255])
 
     # defect_mask[R>THl] = 255
     # defect_mask[R<-THh] = 255
@@ -215,16 +230,16 @@ def TempGenAndDetection(ParaName, W, H, roi_src_img, roi_mask_img):
 
 
 if __name__ == "__main__":
-    # Chara_func(temp_num)
-    ParaName = 'parameter.npy'
+    Chara_func(temp_num)
+    # ParaName = 'parameter.npy'
 
-    test_num = 0
-    roi_src_img = cv2.imread('../roi/region_{:02d}.png'.format(test_num))
-    roi_mask_img = cv2.imread('../Template/bin_mask/region_{:02d}.png'.format(test_num))
-    roi_src_img = cv2.cvtColor(roi_src_img, cv2.COLOR_BGR2GRAY)
-    roi_mask_img = cv2.cvtColor(roi_mask_img, cv2.COLOR_BGR2GRAY)
+    # test_num = 0
+    # roi_src_img = cv2.imread('../roi/region_{:02d}.png'.format(test_num))
+    # roi_mask_img = cv2.imread('../Template/bin_mask/region_{:02d}.png'.format(test_num))
+    # roi_src_img = cv2.cvtColor(roi_src_img, cv2.COLOR_BGR2GRAY)
+    # roi_mask_img = cv2.cvtColor(roi_mask_img, cv2.COLOR_BGR2GRAY)
 
-    start = time.time()
-    TempGenAndDetection(ParaName, roi_src_img, roi_mask_img)
-    end = time.time()
-    print('Total cost:{:.4f}'.format(end - start))
+    # start = time.time()
+    # TempGenAndDetection(ParaName, roi_src_img, roi_mask_img)
+    # end = time.time()
+    # print('Total cost:{:.4f}'.format(end - start))
