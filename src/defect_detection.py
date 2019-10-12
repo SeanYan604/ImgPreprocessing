@@ -288,7 +288,7 @@ if __name__ == "__main__":
         start = time.time()
         defect_mask, defect_rgb = pyGTemplate.TempGenAndDetection(ParaName, Wh, Wl, roi, eroded)
         end = time.time()
-        print('Detection cost:{:.4f}'.format(end - start))
+        # print('Detection cost:{:.4f}'.format(end - start))
 
         result_file = '../Results/defect_rgb_{:02d}'.format(pic_num) + '.png'
         mask_file = '../Results/defect_mask_{:02d}'.format(pic_num) + '.png'
@@ -299,6 +299,11 @@ if __name__ == "__main__":
         defect_mask_ = cv2.dilate(defect_mask, kernel)
         result = np.zeros(defect_mask.shape, np.uint8)
         result[(defect_mask_>0)*(sobel_mask>0)+(defect_mask>0)] = 255
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5, 5))
+        result = cv2.dilate(result, kernel)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7, 7))
+        result = cv2.erode(result, kernel)
 
         one = np.ones(result.shape, np.uint8)
         Inter = one[(result>0)*(img_gt>0)]
@@ -330,6 +335,8 @@ if __name__ == "__main__":
             Recall_mean.append(recall)
         if(F1):
             F1_mean.append(F1)
+
+
         # cv2.imshow('mask', result)
         # cv2.imshow('defect', roi)
         # cv2.imshow('region', eroded)
