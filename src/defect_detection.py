@@ -21,6 +21,8 @@ import pyGTemplate
 import testAAE
 import time
 import region
+
+import scipy.io as scio
 # import Imgprocessing
 
 
@@ -96,7 +98,7 @@ def preprocessing(total_num, sample_id, threshold, exposure, write_flag):
             # output_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '_IN/' + 'TT' + '/' + '{:02d}'.format(pic_num) + '.png'
             # region_file = './roi/region_' + str(pic_num) + '.png'
 
-            print(src_file)
+            # print(src_file)
             img = cv2.imread(src_file)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             m,n = img.shape
@@ -199,15 +201,25 @@ def Contour_extraction(img_files):
 if __name__ == "__main__":
 
     total_num = 28
+    foldernum = 1
     sample_id = 0  
     threshold = 160
     exposure = 6
     write_flag = False
+    evaluate_flag = True
+    extract_CF = False
 
     # W = 30
     # H = 20
     Wh = 0.35
     Wl = 0.7
+
+    Wh_vect = np.array([Wh])
+    Wl_vect = np.array([Wl])
+    if(evaluate_flag):
+        Wh_vect = np.linspace(0.1,0.9, 85, endpoint= True)
+        Wl_vect = np.linspace(0.1,0.9, 85, endpoint= True)
+        # print(Wh_vect)
 
     ParaName = 'parameter.npy'
 
@@ -235,175 +247,203 @@ if __name__ == "__main__":
     model.load_state_dict(checkpoint['model'])
 
 
-    st = time.time()
-    IN_img_vect = []
-    GT_img_vect = []
-    sobel_mask_vect = []
-    sobel_x =np.array([[-1, 0, 1],[-1, 0, 1],[-1, 0, 1]], dtype=np.float32)
-    sobel_y =np.array([[1, 1, 1],[0, 0, 0],[-1, -1, -1]], dtype=np.float32)
-    new_img = np.zeros((256,256), np.uint8)
-
-    Precise_mean = []
-    Recall_mean = []
-    F1_mean = []
-    for pic_num in range(1, total_num):
-        # src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.png'
-        src_file = '../Dataset/defect_img/{:02}.png'.format(pic_num)
-        gt_file = '../Dataset/Mask_img/{:02}.png'.format(pic_num)
-
-        img_in = cv2.imread(src_file)
-        img_in = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
-        img_gt = cv2.imread(gt_file)
-        img_gt = cv2.cvtColor(img_gt, cv2.COLOR_BGR2GRAY)
-
-        imgout = pySQI.SQI(img_in)
-        IN_img_vect.append(imgout)
-        GT_img_vect.append(img_gt)
-
-        sobel_mag = np.zeros(img_in.shape, np.float)
-        sobel_mask = np.zeros(img_in.shape, np.uint8)
-
-        sobelx = cv2.filter2D(img_in, cv2.CV_32F, sobel_x)
-        sobely = cv2.filter2D(img_in, cv2.CV_32F, sobel_y)
-        sobel_mag = np.sqrt(pow(sobelx,2) + pow(sobely,2))
-        sobel_mag = cv2.convertScaleAbs(sobel_mag)
-        _, sobel_mask = cv2.threshold(sobel_mag, threshold, 255, 0)
-        sobel_mask_vect.append(sobel_mask)
-
-        contour = Contour_extraction([sobel_mask])
-        single_img = contour[0].astype(np.uint8)
-        mask = region.regionGenerate(single_img)
-
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3))
-        eroded = cv2.erode(mask,kernel)
-        eroded_2 = cv2.erode(eroded,kernel)
-        eroded_3 = cv2.erode(eroded_2,kernel)
-        roi = cv2.bitwise_and(imgout, imgout, mask=eroded)
-        sub = eroded - eroded_3
-
-        roi[(sub>0)*(roi<80)] = 0
-        eroded[(sub>0)] = 0
-        
-
-        start = time.time()
-        defect_mask, defect_rgb = pyGTemplate.TempGenAndDetection(ParaName, Wh, Wl, roi, eroded)
-        end = time.time()
-        # print('Detection cost:{:.4f}'.format(end - start))
-
-        result_file = '../Results/defect_rgb_{:02d}'.format(pic_num) + '.png'
-        mask_file = '../Results/defect_mask_{:02d}'.format(pic_num) + '.png'
-
-        # cv2.imwrite(result_file, defect_rgb)
-        # cv2.imwrite(mask_file, defect_mask)
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9, 9))
-        defect_mask_ = cv2.dilate(defect_mask, kernel)
-        result = np.zeros(defect_mask.shape, np.uint8)
-        result[(defect_mask_>0)*(sobel_mask>0)+(defect_mask>0)] = 255
-
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5, 5))
-        result = cv2.dilate(result, kernel)
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7, 7))
-        result = cv2.erode(result, kernel)
-
-        one = np.ones(result.shape, np.uint8)
-        Inter = one[(result>0)*(img_gt>0)]
-        Union = one[(result>0)+(img_gt>0)]
-
-        IoU = np.sum(Inter)/np.sum(Union)
-        if(np.sum(Inter) == 0 and np.sum(Union) == 0):
-            IoU = 1
-        
-        TP = np.sum(one[(result>0)*(img_gt>0)])
-        FP = np.sum(one[(result>0)*(img_gt==0)])
-        FN = np.sum(one[(result==0)*(img_gt>0)])
-
-        precise = TP/(TP+FP)
-        recall = TP/(TP+FN)
-        if((TP+FP)==0):
-            precise = 0
-        if((TP+FN)==0):
-            recall = 0
-        if(recall==0 and precise==0):
-            F1 = 0
-        else:
-            F1 = 2*(precise*recall)/(precise + recall)
-        print('IoU : {:.4f}   Precise : {:.4f}  Recall : {:.4f}  F1 : {:.4f}'.format(IoU, precise, recall, F1))
-
-        if(precise):
-            Precise_mean.append(precise)
-        if(recall):
-            Recall_mean.append(recall)
-        if(F1):
-            F1_mean.append(F1)
-
-
-        # cv2.imshow('mask', result)
-        # cv2.imshow('defect', roi)
-        # cv2.imshow('region', eroded)
-        # cv2.imshow('sobel', sobel_mask)
-        # cv2.waitKey(0)
-
-
-    # ed = time.time()
-    # print("IN_Cost:{:.5f}".format(ed-st))
-
-    # time_start = time.time()
-    # sobel_mask_vect = preprocessing(total_num, sample_id, threshold, exposure, write_flag)
-    # time_end = time.time()
-    # print('Proprecessing time cost:{:.3f}'.format(time_end - time_start))
-
-    # contour_vect = Contour_extraction(sobel_mask_vect)
-    # print('AAE time cost:{:.3f}'.format(time.time() - time_end))
-
-    # for i, singleimg in enumerate(contour_vect):
-    #     # singleimg = np.squeeze(singleimg, axis=(2,))
-    #     singleimg = singleimg.astype(np.uint8)
-    #     src = IN_img_vect[i]
-    #     # cv2.imshow('src',src)
-    #     # cv2.waitKey(0)
-    #     region_file = '../roi/region_{:02d}'.format(i) + '.png'
-    #     mask_file = '../Template/bin_mask/region_{:02d}'.format(i) + '.png'
-    #     mask = region.regionGenerate(singleimg)
-        
-    #     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3))
-    #     eroded = cv2.erode(mask,kernel)
-    #     eroded_2 = cv2.erode(eroded,kernel)
-    #     eroded_3 = cv2.erode(eroded_2,kernel)
-    #     roi = cv2.bitwise_and(src, src, mask=eroded)
-    #     sub = eroded - eroded_3
-
-    #     roi[(sub>0)*(roi<80)] = 0
-    #     eroded[(sub>0)*(roi<80)] = 0
-
-    #     # background = cv2.bitwise_not(eroded)            
-    #     # cv2.imwrite(region_file, roi)
-    #     # cv2.imwrite(mask_file, eroded)
-    #     # cv2.imshow('region', roi+background)
-    #     # cv2.waitKey(0)
-
-    #     #--------------------defect detection 
-    #     # cv2.imshow('roi', roi) 
-    #     # cv2.imshow('eroded', eroded)
-    #     # cv2.waitKey(0)
-
-
-    #     start = time.time()
-    #     defect_mask, defect_rgb = pyGTemplate.TempGenAndDetection(ParaName, Wh, Wl, roi, eroded)
-    #     end = time.time()
-    #     print('Detection cost:{:.4f}'.format(end - start))
-
-    #     result_file = '../Results/defect_rgb_{:02d}'.format(i) + '.png'
-    #     mask_file = '../Results/defect_mask_{:02d}'.format(i) + '.png'
-
-    #     # cv2.imwrite(result_file, defect_rgb)
-    #     # cv2.imwrite(mask_file, defect_mask)
-    #     cv2.imshow('mask', defect_mask)
-    #     cv2.waitKey(0)
-
-    # print('Totally time cost:{:.3f}'.format(time.time() - st)) 
-    Precise_mean = np.mean(Precise_mean)
-    Recall_mean = np.mean(Recall_mean)
-    F1_mean = np.mean(F1_mean)
-
-    print('Mean Precise : {:.4f}  Mean Recall : {:.4f}  Mean F1 : {:.4f}'.format(Precise_mean, Recall_mean, F1_mean))
     
+
+    F1_evaluate = []
+    Precise_evaluate = []
+    Recall_evaluate = []
+    for Wl_idx, Wl in enumerate(Wl_vect):
+
+        st = time.time()
+        IN_img_vect = []
+        GT_img_vect = []
+        sobel_mask_vect = []
+        sobel_x =np.array([[-1, 0, 1],[-1, 0, 1],[-1, 0, 1]], dtype=np.float32)
+        sobel_y =np.array([[1, 1, 1],[0, 0, 0],[-1, -1, -1]], dtype=np.float32)
+        new_img = np.zeros((256,256), np.uint8)
+
+        Precise_mean = []
+        Recall_mean = []
+        F1_mean = []
+
+        for folder_num in range(1, foldernum+1):
+            for pic_num in range(1, total_num):
+                # src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.png'
+                if extract_CF:
+                    src_file = '../Dataset/origin_img/{:02}.png'.format(pic_num)
+                else:
+                    src_file = '../Dataset/defect_img/{:02}/{:02}.png'.format(folder_num, pic_num)
+                
+                gt_file = '../Dataset/Mask_img/{:02}/{:02}.png'.format(folder_num, pic_num)
+
+                img_in = cv2.imread(src_file)
+                img_in = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
+                img_gt = cv2.imread(gt_file)
+                img_gt = cv2.cvtColor(img_gt, cv2.COLOR_BGR2GRAY)
+
+                imgout = pySQI.SQI(img_in)
+                IN_img_vect.append(imgout)
+                GT_img_vect.append(img_gt)
+
+                sobel_mag = np.zeros(img_in.shape, np.float)
+                sobel_mask = np.zeros(img_in.shape, np.uint8)
+
+                sobelx = cv2.filter2D(img_in, cv2.CV_32F, sobel_x)
+                sobely = cv2.filter2D(img_in, cv2.CV_32F, sobel_y)
+                sobel_mag = np.sqrt(pow(sobelx,2) + pow(sobely,2))
+                sobel_mag = cv2.convertScaleAbs(sobel_mag)
+                _, sobel_mask = cv2.threshold(sobel_mag, threshold, 255, 0)
+                sobel_mask_vect.append(sobel_mask)
+
+                contour = Contour_extraction([sobel_mask])
+                single_img = contour[0].astype(np.uint8)
+                mask = region.regionGenerate(single_img)
+
+                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3))
+                eroded = cv2.erode(mask,kernel)
+                eroded_2 = cv2.erode(eroded,kernel)
+                eroded_3 = cv2.erode(eroded_2,kernel)
+                roi = cv2.bitwise_and(imgout, imgout, mask=eroded)
+                sub = eroded - eroded_3
+
+                roi[(sub>0)*(roi<80)] = 0
+                eroded[(sub>0)] = 0
+                
+                if extract_CF:
+                    region_file = '../roi/region_{:02d}'.format(pic_num) + '.png'
+                    mask_file = '../Template/bin_mask/region_{:02d}'.format(pic_num) + '.png'     
+                    cv2.imwrite(region_file, roi)
+                    cv2.imwrite(mask_file, eroded)
+
+                start = time.time()
+                defect_mask, defect_rgb = pyGTemplate.TempGenAndDetection(ParaName, Wh, Wl, roi, eroded)
+                end = time.time()
+                # print('Detection cost:{:.4f}'.format(end - start))
+
+                result_file = '../Results/defect_rgb_{:02d}'.format(pic_num) + '.png'
+                mask_file = '../Results/defect_mask_{:02d}'.format(pic_num) + '.png'
+                
+                # cv2.imwrite(result_file, defect_rgb)
+                # cv2.imwrite(mask_file, defect_mask)
+                # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3))
+                # defect_mask = cv2.dilate(defect_mask, kernel)
+                # result = np.zeros(defect_mask.shape, np.uint8)
+                # result[(defect_mask_>0)*(sobel_mask>0)+(defect_mask>0)] = 255
+
+                # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5, 5))
+                # result = cv2.dilate(result, kernel)
+                # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7, 7))
+                # result = cv2.erode(result, kernel)
+
+                one = np.ones(defect_mask.shape, np.uint8)
+                Inter = one[(defect_mask>0)*(img_gt>0)]
+                Union = one[(defect_mask>0)+(img_gt>0)]
+
+                IoU = np.sum(Inter)/np.sum(Union)
+                if np.sum(Inter) == 0 and np.sum(Union) == 0 :
+                    IoU = 1
+                
+                TP = np.sum(one[(defect_mask>0)*(img_gt>0)])
+                FP = np.sum(one[(defect_mask>0)*(img_gt==0)])
+                FN = np.sum(one[(defect_mask==0)*(img_gt>0)])
+
+                precise = TP/(TP+FP)
+                recall = TP/(TP+FN)
+                if (TP+FP)==0:
+                    precise = 0
+                if (TP+FN)==0:
+                    recall = 0
+                if recall==0 and precise==0:
+                    F1 = 0
+                else:
+                    F1 = 2*(precise*recall)/(precise + recall)
+                print('IoU : {:.4f}   Precise : {:.4f}  Recall : {:.4f}  F1 : {:.4f}'.format(IoU, precise, recall, F1))
+
+                # if precise:
+                Precise_mean.append(precise)
+                # if recall:
+                Recall_mean.append(recall)
+                # if F1:
+                F1_mean.append(F1)
+
+
+                # cv2.imshow('mask', defect_mask)
+                # cv2.imshow('defect', defect_rgb)
+                # cv2.waitKey(0)
+
+
+            # ed = time.time()
+            # print("IN_Cost:{:.5f}".format(ed-st))
+
+            # time_start = time.time()
+            # sobel_mask_vect = preprocessing(total_num, sample_id, threshold, exposure, write_flag)
+            # time_end = time.time()
+            # print('Proprecessing time cost:{:.3f}'.format(time_end - time_start))
+
+            # contour_vect = Contour_extraction(sobel_mask_vect)
+            # print('AAE time cost:{:.3f}'.format(time.time() - time_end))
+
+            # for i, singleimg in enumerate(contour_vect):
+            #     # singleimg = np.squeeze(singleimg, axis=(2,))
+            #     singleimg = singleimg.astype(np.uint8)
+            #     src = IN_img_vect[i]
+            #     # cv2.imshow('src',src)
+            #     # cv2.waitKey(0)
+            #     region_file = '../roi/region_{:02d}'.format(i) + '.png'
+            #     mask_file = '../Template/bin_mask/region_{:02d}'.format(i) + '.png'
+            #     mask = region.regionGenerate(singleimg)
+                
+            #     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3))
+            #     eroded = cv2.erode(mask,kernel)
+            #     eroded_2 = cv2.erode(eroded,kernel)
+            #     eroded_3 = cv2.erode(eroded_2,kernel)
+            #     roi = cv2.bitwise_and(src, src, mask=eroded)
+            #     sub = eroded - eroded_3
+
+            #     roi[(sub>0)*(roi<80)] = 0
+            #     eroded[(sub>0)*(roi<80)] = 0
+
+            #     # background = cv2.bitwise_not(eroded)            
+            #     # cv2.imwrite(region_file, roi)
+            #     # cv2.imwrite(mask_file, eroded)
+            #     # cv2.imshow('region', roi+background)
+            #     # cv2.waitKey(0)
+
+            #     #--------------------defect detection 
+            #     # cv2.imshow('roi', roi) 
+            #     # cv2.imshow('eroded', eroded)
+            #     # cv2.waitKey(0)
+
+
+            #     start = time.time()
+            #     defect_mask, defect_rgb = pyGTemplate.TempGenAndDetection(ParaName, Wh, Wl, roi, eroded)
+            #     end = time.time()
+            #     print('Detection cost:{:.4f}'.format(end - start))
+
+            #     result_file = '../Results/defect_rgb_{:02d}'.format(i) + '.png'
+            #     mask_file = '../Results/defect_mask_{:02d}'.format(i) + '.png'
+
+            #     # cv2.imwrite(result_file, defect_rgb)
+            #     # cv2.imwrite(mask_file, defect_mask)
+            #     cv2.imshow('mask', defect_mask)
+            #     cv2.waitKey(0)
+
+            print('Totally time cost:{:.3f}'.format(time.time() - st)) 
+            Precise_mean = np.mean(Precise_mean)
+            Recall_mean = np.mean(Recall_mean)
+            F1_mean = np.mean(F1_mean)
+
+            print('Mean Precise : {:.4f}  Mean Recall : {:.4f}  Mean F1 : {:.4f}'.format(Precise_mean, Recall_mean, F1_mean))
+
+            Precise_evaluate.append(Precise_mean)
+            Recall_evaluate.append(Recall_mean)
+            F1_evaluate.append(F1_mean)
+
+    Precise_evaluate = np.array(Precise_evaluate)
+    Recall_evaluate = np.array(Recall_evaluate)
+    F1_evaluate = np.array(F1_evaluate)
+    data = np.vstack((Precise_evaluate, Recall_evaluate, F1_evaluate))
+
+    if(evaluate_flag):
+        mat = 'Wl_evaluate_data.mat'
+        scio.savemat(mat, {'data': data})

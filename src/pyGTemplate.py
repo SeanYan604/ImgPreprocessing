@@ -11,7 +11,7 @@ import matplotlib.cbook
 
 warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 
-temp_num = 15
+temp_num = 28
 
 def gaussian(x, *param):  
     return param[0]*np.exp(-np.power(x-param[3],2.)/np.power(param[6], 2.))\
@@ -216,7 +216,7 @@ def sub_operation_simple(para, initial_template, img_expanded, img_map):
     gap_pix = 1
     vl = initial_template[gap_pix-1, 0]
     vh = initial_template[m-gap_pix, 0]
-    print(vl,vh)
+    # print(vl,vh)
     # for k in range(n-1):
     #     if(img_expanded[m-1, k]==0 and img_expanded[m-1, k+1]>0):
     #         L = k+1
@@ -280,7 +280,7 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
     # print(THh, THl)
     THh = Wh*(np.sum(np.dot(para[0],para[1])))/np.sum(para[0])
     THl = -Wl*(255 - np.sum(np.dot(para[0],para[1])))/np.sum(para[0])
-    # print(THh, THl)
+    print(THh, THl)
 
     st = time.time()
     [m,n] = roi_mask_img.shape
@@ -300,7 +300,7 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
     defect_mask = np.zeros([m,n], np.uint8)
     defect_rgb = cv2.merge([roi_src_img, roi_src_img, roi_src_img])
     ed_2 = time.time()
-    print("Substraction_Cost:{:.5f}".format(ed_2 - ed))
+    # print("Substraction_Cost:{:.5f}".format(ed_2 - ed))
 
     for i in range(n):
         for j in range(m):
@@ -308,7 +308,7 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
                 R[img_map[j,i], i] = D[j,i]
                 if(R[img_map[j,i], i] > THh or R[img_map[j,i], i] < THl):
                     defect_mask[img_map[j,i], i] = 255
-                    # defect_rgb[img_map[j,i], i, :] = np.array([0, 0, 255]) 
+                    defect_rgb[img_map[j,i], i, :] = np.array([0, 0, 255]) 
 
     for j in range(1,n-1):
         for i in range(1,m-1):
@@ -334,19 +334,19 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
 
 
 if __name__ == "__main__":
-    # Chara_func(temp_num)
-    ParaName = 'parameter.npy'
+    Chara_func(temp_num)
+    # ParaName = 'parameter.npy'
 
-    test_num = 0
-    Wh = 0.35
-    Wl = 0.7
-    roi_src_img = cv2.imread('../roi/region_{:02d}.png'.format(test_num))
-    roi_mask_img = cv2.imread('../Template/bin_mask/region_{:02d}.png'.format(test_num))
-    roi_src_img = cv2.cvtColor(roi_src_img, cv2.COLOR_BGR2GRAY)
-    roi_mask_img = cv2.cvtColor(roi_mask_img, cv2.COLOR_BGR2GRAY)
+    # test_num = 0
+    # Wh = 0.35
+    # Wl = 0.7
+    # roi_src_img = cv2.imread('../roi/region_{:02d}.png'.format(test_num))
+    # roi_mask_img = cv2.imread('../Template/bin_mask/region_{:02d}.png'.format(test_num))
+    # roi_src_img = cv2.cvtColor(roi_src_img, cv2.COLOR_BGR2GRAY)
+    # roi_mask_img = cv2.cvtColor(roi_mask_img, cv2.COLOR_BGR2GRAY)
 
-    start = time.time()
-    defect_mask, defect_rgb = TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img)
-    # expanded, map = ExpandImg_simple(roi_src_img, roi_mask_img)
-    end = time.time()
-    print('Total cost:{:.4f}'.format(end - start))
+    # start = time.time()
+    # defect_mask, defect_rgb = TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img)
+    # # expanded, map = ExpandImg_simple(roi_src_img, roi_mask_img)
+    # end = time.time()
+    # print('Total cost:{:.4f}'.format(end - start))

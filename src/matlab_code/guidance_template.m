@@ -13,7 +13,7 @@ background_sum = [];
 
 coArray=['y','m','c','r','g','b','w','k'];%初始颜色数组
 for i =1:temp_num
-    background = imread(strcat('../roi/region_',sprintf('%02d',i),'.png'));
+    background = imread(strcat('../../roi/region_',sprintf('%02d',i),'.png'));
     pix_vect = pixExtraction(background);
     background_sum = [ background_sum; pix_vect];
     figure(1);
@@ -139,8 +139,8 @@ y = fitresult.a1*gaussmf(x,[fitresult.c1/1.414,fitresult.b1])+fitresult.a2*gauss
 
 test_num = 0 ;
 for o=0:test_num
-    target_img = imread(strcat('../roi/region_',sprintf('%02d',o),'.png'));
-    mask_img = imread(strcat('../Template/bin_mask/region_',sprintf('%02d',o),'.png'));
+    target_img = imread(strcat('../../roi/region_',sprintf('%02d',o),'.png'));
+    mask_img = imread(strcat('../../Template/bin_mask/region_',sprintf('%02d',o),'.png'));
 %     img_compressed = CompressImg(target_img);
     tic;
     [img_compressed, map] = ExpandImg(target_img, mask_img);

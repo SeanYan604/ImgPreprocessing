@@ -2,14 +2,25 @@ clc
 clear 
 close all
 
-loss = load('loss.mat');
-data = loss.loss;
-epoch = data(:,1);
-G_loss = data(:,3);
+% =========================  plot tranning loss =======
+% loss = load('loss.mat');
+% data = loss.loss;
+% epoch = data(:,1);
+% G_loss = data(:,3);
+% 
+% figure(1);
+% plot(epoch, G_loss);
+% grid on;
 
-figure(1);
-plot(epoch, G_loss);
-grid on;
+% =========================  plot evaluate Wh =========
+load('Wh_evaluate_data.mat');
+Precise_eval = data(1,:);
+Recall_eval = data(2,:);
+F1_eval = data()
+
+
+
+
 
 % D_loss = data(:,2);
 % epoch_ = data(:,1);
