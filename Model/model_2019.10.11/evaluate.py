@@ -206,7 +206,7 @@ if __name__ == "__main__":
     gt_root = '../../DefectDataset/gt'
     noise_root = '../../DefectDataset/noise'
     pic_num = 27
-    model_id = 802
+    model_id = 400
     model_is_trained_parallel = True
 
     model = AEGenerator().cuda()
@@ -216,7 +216,7 @@ if __name__ == "__main__":
         model.to(device)
     # model.load_state_dict(torch.load('./model/aug/conv_aae_epoch_2990.pth'))
     
-    checkpoint = torch.load('./gan/aegan_epoch_{}.pth'.format(model_id))
+    checkpoint = torch.load('./gan/ae_epoch_{}.pth'.format(model_id))
     # here, checkpoint is a dict with the keys you defined before
     model.load_state_dict(checkpoint['model'])
 
@@ -305,5 +305,5 @@ if __name__ == "__main__":
     data = np.vstack((IoU_vect,Precise_vect,Recall_vect,F1_vect))
     print(data.shape)
 
-    mat = 'evaluate_data.mat'
+    mat = 'evaluate_data_dae.mat'
     scio.savemat(mat, {'data': data})
