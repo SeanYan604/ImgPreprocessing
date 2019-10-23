@@ -25,13 +25,13 @@ def Maskgeneration(img_num, foldernum):
             # print(sub.dtype)
             mask[np.abs(sub) > 70] = 255
 
-            cv2.imshow('mask', mask)
-            cv2.waitKey(0)
+            # cv2.imshow('mask', mask)
+            # cv2.waitKey(0)
 
             cv2.imwrite(mask_file, mask)
 
 if __name__ == "__main__":
     img_num = 27
-    foldernum = 3
+    foldernum = 11
     Maskgeneration(img_num, foldernum)
 

@@ -163,7 +163,7 @@ def preprocessing(total_num, sample_id, threshold, exposure, write_flag):
 
     return sobel_mask_vect
 
-def Contour_extraction(img_files):
+def Contour_extraction(img_files, model):
     width = 256
     height = 256
     x_truth = np.reshape(img_files, (len(img_files), width, height, 1))  # adapt this if using `channels_first` image data format
@@ -197,15 +197,14 @@ def Contour_extraction(img_files):
         contours.append(singleimg)
     return contours
 
-
-if __name__ == "__main__":
+def Template_method():
 
     total_num = 28
-    foldernum = 1
-    sample_id = 0  
+    foldernum = 11
+    # sample_id = 0  
     threshold = 160
-    exposure = 6
-    write_flag = False
+    # exposure = 6
+    # write_flag = False
     evaluate_flag = True
     extract_CF = False
 
@@ -223,7 +222,7 @@ if __name__ == "__main__":
 
     ParaName = 'parameter.npy'
 
-# ---------------- Load model ----------------------
+    # ---------------- Load model ----------------------
     
     model_id = 802
     model_is_trained_parallel = True
@@ -246,9 +245,6 @@ if __name__ == "__main__":
     # here, checkpoint is a dict with the keys you defined before
     model.load_state_dict(checkpoint['model'])
 
-
-    
-
     F1_evaluate = []
     Precise_evaluate = []
     Recall_evaluate = []
@@ -262,11 +258,12 @@ if __name__ == "__main__":
         sobel_y =np.array([[1, 1, 1],[0, 0, 0],[-1, -1, -1]], dtype=np.float32)
         new_img = np.zeros((256,256), np.uint8)
 
-        Precise_mean = []
-        Recall_mean = []
-        F1_mean = []
-
         for folder_num in range(1, foldernum+1):
+
+            Precise_mean = []
+            Recall_mean = []
+            F1_mean = []
+
             for pic_num in range(1, total_num):
                 # src_file = '../data/sample_' + str(sample_id) + '/{:03d}'.format(exposure) + '/' + str(pic_num) + '.png'
                 if extract_CF:
@@ -295,7 +292,7 @@ if __name__ == "__main__":
                 _, sobel_mask = cv2.threshold(sobel_mag, threshold, 255, 0)
                 sobel_mask_vect.append(sobel_mask)
 
-                contour = Contour_extraction([sobel_mask])
+                contour = Contour_extraction([sobel_mask], model)
                 single_img = contour[0].astype(np.uint8)
                 mask = region.regionGenerate(single_img)
 
@@ -304,7 +301,7 @@ if __name__ == "__main__":
                 eroded_2 = cv2.erode(eroded,kernel)
                 eroded_3 = cv2.erode(eroded_2,kernel)
                 roi = cv2.bitwise_and(imgout, imgout, mask=eroded)
-                sub = eroded - eroded_3
+                sub = eroded - eroded_2
 
                 roi[(sub>0)*(roi<80)] = 0
                 eroded[(sub>0)] = 0
@@ -447,3 +444,8 @@ if __name__ == "__main__":
     if(evaluate_flag):
         mat = 'Wl_evaluate_data.mat'
         scio.savemat(mat, {'data': data})
+
+if __name__ == "__main__":
+
+    Template_method()
+    
