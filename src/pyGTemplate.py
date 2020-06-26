@@ -1,11 +1,12 @@
 
 import numpy as np
-from numba import jit
+# from numba import jit
 import cv2
 import time
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab  
 from scipy.optimize import curve_fit
+from scipy.stats import norm
 import warnings
 import matplotlib.cbook
 
@@ -156,10 +157,10 @@ def CalculateXi_tri(para, Q):
                 i += 1
             if(i == Q+1):
                 break
-            sum_ = sum_+(alpha[0]*mlab.normpdf(t, mu[0], sigma[0])+alpha[1]*mlab.normpdf(t, mu[1], sigma[1])+alpha[2]*mlab.normpdf(t, mu[2], sigma[2]))/np.sum(alpha)
+            sum_ = sum_+(alpha[0]*norm.pdf(t, mu[0], sigma[0])+alpha[1]*norm.pdf(t, mu[1], sigma[1])+alpha[2]*norm.pdf(t, mu[2], sigma[2]))/np.sum(alpha)
 
         else:
-            sum_ = sum_+(alpha[0]*mlab.normpdf(t, mu[0], sigma[0])+alpha[1]*mlab.normpdf(t, mu[1], sigma[1])+alpha[2]*mlab.normpdf(t, mu[2], sigma[2]))/np.sum(alpha)
+            sum_ = sum_+(alpha[0]*norm.pdf(t, mu[0], sigma[0])+alpha[1]*norm.pdf(t, mu[1], sigma[1])+alpha[2]*norm.pdf(t, mu[2], sigma[2]))/np.sum(alpha)
     return Xi
 
 def sub_operation(para, initial_template, img_expanded):
@@ -271,34 +272,36 @@ def sub_operation_simple(para, initial_template, img_expanded, img_map):
 
     return D
 
-def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
+def inittempGeneration(ParaName, img_shape):
+    para = np.load(ParaName)
+    
+    m,n = img_shape[0], img_shape[1]
+    Xi = CalculateXi_tri(para, m)
+    initial_template = np.zeros([m,n], np.uint8)
+    for i in range(n):
+        initial_template[:,i] = Xi
+    
+    return initial_template
+
+
+def TempGenAndDetection(ParaName, Wh, Wl, initial_template, sqi_out, roi_src_img, roi_mask_img):
 
     para = np.load(ParaName)
     # THl = W*np.log(np.mean(para[2]))/np.log(np.mean(para[1]))
     # THl = np.max(THl, 0)
     # THh = THl + H
-    # print(THh, THl)
     THh = Wh*(np.sum(np.dot(para[0],para[1])))/np.sum(para[0])
     THl = -Wl*(255 - np.sum(np.dot(para[0],para[1])))/np.sum(para[0])
-    print(THh, THl)
 
-    st = time.time()
     [m,n] = roi_mask_img.shape
     img_expanded, img_map = ExpandImg_simple(roi_src_img, roi_mask_img)
     # img_expanded, img_map = ExpandImg(roi_src_img, roi_mask_img)
-    Xi = CalculateXi_tri(para, m)
-    initial_template = np.zeros([m,n], np.uint8)
-    for i in range(n):
-        initial_template[:,i] = Xi
-    ed = time.time()
-    # print("Initial_template_Cost:{:.5f}".format(ed-st))
-
 
     D = sub_operation_simple(para, initial_template, img_expanded, img_map)
     # D = sub_operation(para, initial_template, img_expanded)
     R = np.zeros([m,n], np.float)
     defect_mask = np.zeros([m,n], np.uint8)
-    defect_rgb = cv2.merge([roi_src_img, roi_src_img, roi_src_img])
+    defect_rgb = cv2.merge([sqi_out, sqi_out, sqi_out])
     ed_2 = time.time()
     # print("Substraction_Cost:{:.5f}".format(ed_2 - ed))
 
@@ -306,9 +309,8 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
         for j in range(m):
             if(img_map[j,i]):
                 R[img_map[j,i], i] = D[j,i]
-                if(R[img_map[j,i], i] > THh or R[img_map[j,i], i] < THl):
-                    defect_mask[img_map[j,i], i] = 255
-                    defect_rgb[img_map[j,i], i, :] = np.array([0, 0, 255]) 
+
+    defect_mask[(R>THh)+(R<THl)] = 255
 
     for j in range(1,n-1):
         for i in range(1,m-1):
@@ -316,8 +318,9 @@ def TempGenAndDetection(ParaName, Wh, Wl, roi_src_img, roi_mask_img):
                 adjecent = float(defect_mask[i-1,j-1])+float(defect_mask[i-1,j])+float(defect_mask[i-1,j+1])+float(defect_mask[i,j-1]+defect_mask[i,j+1])+float(defect_mask[i+1,j-1])+float(defect_mask[i+1,j])+float(defect_mask[i+1,j+1])
                 if(adjecent == 0):
                     defect_mask[i,j] = 0
-                else:
-                    defect_rgb[i,j,:] = np.array([0,0,255])
+                    
+    defect_rgb[defect_mask>0] = np.array([0,0,255])
+
     print("Defect_loc_Cost:{:.5f}".format(time.time() - ed_2))
     
     # defect_mask = cv2.medianBlur(defect_mask, 3)

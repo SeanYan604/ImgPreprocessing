@@ -62,6 +62,5 @@ if __name__ == '__main__':
     ed = time.time()
     print("Cost:{:.5f}".format(ed-st))
 
-    print(img_out.dtype)
-    cv2.imshow("result", img_out )
-    cv2.waitKey(0)
+    # cv2.imshow("result", img_out )
+    # cv2.waitKey(0)

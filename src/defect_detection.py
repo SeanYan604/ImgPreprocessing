@@ -205,13 +205,13 @@ def Template_method():
     threshold = 160
     # exposure = 6
     # write_flag = False
-    evaluate_flag = True
+    evaluate_flag = False
     extract_CF = False
 
     # W = 30
     # H = 20
-    Wh = 0.35
-    Wl = 0.7
+    Wh = 0.3
+    Wl = 0.5
 
     Wh_vect = np.array([Wh])
     Wl_vect = np.array([Wl])
@@ -233,6 +233,9 @@ def Template_method():
         os.mkdir('../Test_Image/input')
     if not os.path.exists('../Test_Image/output'):
         os.mkdir('../Test_Image/output')
+    # if not os.path.exists('../Detection_results'):
+    #     os.mkdir('../Detection_results')
+        
     # Setting Image Propertie
     model = AEGenerator().cuda()
     if model_is_trained_parallel:    #如果使用服务器并行训练的模型需要加上以下的步骤
@@ -248,16 +251,28 @@ def Template_method():
     F1_evaluate = []
     Precise_evaluate = []
     Recall_evaluate = []
+
+    index = 0
+    total_time = []
+    sqi_time = []
+    ROI_time = []
+    detection_time = []
+
+    initial_template = pyGTemplate.inittempGeneration(ParaName, [256,256])
+
     for Wl_idx, Wl in enumerate(Wl_vect):
 
-        st = time.time()
+        # st = time.time()
         IN_img_vect = []
         GT_img_vect = []
         sobel_mask_vect = []
         sobel_x =np.array([[-1, 0, 1],[-1, 0, 1],[-1, 0, 1]], dtype=np.float32)
         sobel_y =np.array([[1, 1, 1],[0, 0, 0],[-1, -1, -1]], dtype=np.float32)
-        new_img = np.zeros((256,256), np.uint8)
+        # new_img = np.zeros((256,256), np.uint8)
 
+        Precise = []
+        Recall = []
+        F1 = []
         for folder_num in range(1, foldernum+1):
 
             Precise_mean = []
@@ -271,16 +286,22 @@ def Template_method():
                 else:
                     src_file = '../Dataset/defect_img/{:02}/{:02}.png'.format(folder_num, pic_num)
                 
+                index += 1
                 gt_file = '../Dataset/Mask_img/{:02}/{:02}.png'.format(folder_num, pic_num)
+                
 
                 img_in = cv2.imread(src_file)
                 img_in = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
                 img_gt = cv2.imread(gt_file)
                 img_gt = cv2.cvtColor(img_gt, cv2.COLOR_BGR2GRAY)
 
+                sqi_start = time.time()
                 imgout = pySQI.SQI(img_in)
-                IN_img_vect.append(imgout)
-                GT_img_vect.append(img_gt)
+                sqi_end = time.time()
+                sqi_time.append(sqi_end - sqi_start)
+
+                # IN_img_vect.append(imgout)
+                # GT_img_vect.append(img_gt)
 
                 sobel_mag = np.zeros(img_in.shape, np.float)
                 sobel_mask = np.zeros(img_in.shape, np.uint8)
@@ -301,7 +322,7 @@ def Template_method():
                 eroded_2 = cv2.erode(eroded,kernel)
                 eroded_3 = cv2.erode(eroded_2,kernel)
                 roi = cv2.bitwise_and(imgout, imgout, mask=eroded)
-                sub = eroded - eroded_2
+                sub = eroded - eroded_3
 
                 roi[(sub>0)*(roi<80)] = 0
                 eroded[(sub>0)] = 0
@@ -312,14 +333,21 @@ def Template_method():
                     cv2.imwrite(region_file, roi)
                     cv2.imwrite(mask_file, eroded)
 
-                start = time.time()
-                defect_mask, defect_rgb = pyGTemplate.TempGenAndDetection(ParaName, Wh, Wl, roi, eroded)
-                end = time.time()
+                detect_start = time.time()
+                ROI_time.append(detect_start - sqi_end)
+                defect_mask, defect_rgb = pyGTemplate.TempGenAndDetection(ParaName, Wh, Wl, initial_template, imgout, roi, eroded)
+                detect_end = time.time()
+                detection_time.append(detect_end - detect_start)
+                total_time.append(detect_end - sqi_start)
                 # print('Detection cost:{:.4f}'.format(end - start))
 
-                result_file = '../Results/defect_rgb_{:02d}'.format(pic_num) + '.png'
-                mask_file = '../Results/defect_mask_{:02d}'.format(pic_num) + '.png'
+                # result_file = '../Results/defect_rgb_{:02d}'.format(pic_num) + '.png'
+                mask_file = '../Results/mask/{:03d}.png'.format(index)
+                result_file = '../Results/rgb/{:03d}.png'.format(index)
                 
+                if not (extract_CF and evaluate_flag):
+                    cv2.imwrite(mask_file, defect_mask)
+                    cv2.imwrite(result_file, defect_rgb)
                 # cv2.imwrite(result_file, defect_rgb)
                 # cv2.imwrite(mask_file, defect_mask)
                 # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3, 3))
@@ -425,7 +453,7 @@ def Template_method():
             #     cv2.imshow('mask', defect_mask)
             #     cv2.waitKey(0)
 
-            print('Totally time cost:{:.3f}'.format(time.time() - st)) 
+            #  print('Totally time cost:{:.3f}'.format(time.time() - st)) 
             Precise_mean = np.mean(Precise_mean)
             Recall_mean = np.mean(Recall_mean)
             F1_mean = np.mean(F1_mean)
@@ -435,15 +463,30 @@ def Template_method():
             Precise_evaluate.append(Precise_mean)
             Recall_evaluate.append(Recall_mean)
             F1_evaluate.append(F1_mean)
+        
+        Precise = np.max(Precise_mean)
+        Recall = np.max(Recall_mean)
+        F1 = np.max(F1_mean)
 
-    Precise_evaluate = np.array(Precise_evaluate)
-    Recall_evaluate = np.array(Recall_evaluate)
-    F1_evaluate = np.array(F1_evaluate)
+    Precise_evaluate = np.array(Precise)
+    Recall_evaluate = np.array(Recall)
+    F1_evaluate = np.array(F1)
     data = np.vstack((Precise_evaluate, Recall_evaluate, F1_evaluate))
+    mean_data = np.mean(data,1)
+
+    sqi_mean = np.mean(sqi_time)
+    ROI_mean = np.mean(ROI_time)
+    detection_mean = np.mean(detection_time)
+    total_mean = np.mean(total_time)
 
     if(evaluate_flag):
         mat = 'Wl_evaluate_data.mat'
         scio.savemat(mat, {'data': data})
+    else:
+        with open('result.txt', 'w') as f:
+            f.write('Mean Precise : {:.4f}  Mean Recall : {:.4f}  Mean F1 : {:.4f} \n'.format(mean_data[0], mean_data[1], mean_data[2]))
+            f.write('Avg SQI time_cost: {:.4f}   Avg RoI_extract time_cost: {:.4f}  Avg detection time_cost: {:.4f} \n'.format(sqi_mean, ROI_mean, detection_mean))
+            f.write('Total time cost: {:.4f}'.format(total_mean))
 
 if __name__ == "__main__":
 

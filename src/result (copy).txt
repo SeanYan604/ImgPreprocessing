@@ -1,0 +1,3 @@
+Mean Precise : 0.9216  Mean Recall : 0.8646  Mean F1 : 0.8818 
+Avg SQI time_cost: 0.0185   Avg RoI_extract time_cost: 0.0030  Avg detection time_cost: 0.0325 
+Total time cost: 0.0539

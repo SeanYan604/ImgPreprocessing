@@ -228,10 +228,10 @@ if __name__ == "__main__":
 
 
         background = cv2.bitwise_not(eroded)            
-        cv2.imwrite(region_file, roi)
-        cv2.imwrite(mask_file, eroded)
-        cv2.imshow('region', roi+background)
-        cv2.waitKey(0)
+        # cv2.imwrite(region_file, roi)
+        # cv2.imwrite(mask_file, eroded)
+        # cv2.imshow('region', roi+background)
+        # cv2.waitKey(0)
 
     print('Totally time cost:{:.3f}'.format(time.time() - time_start))    
 
